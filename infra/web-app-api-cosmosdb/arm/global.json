@@ -1,0 +1,396 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string",
+      "defaultValue": "[concat('name', uniqueString(resourceGroup().id))]",
+      "minLength": 2,
+      "metadata": {
+        "description": "Web app name prefix."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "allowedValues": [
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1V2",
+        "P2V2",
+        "P3V2",
+        "P1V3",
+        "P2V3",
+        "P3V3"
+      ],      
+      "metadata": {
+        "description": "The SKU of App Service Plan."
+      }
+    },
+    "baseTime": {
+      "type": "string",
+      "defaultValue": "[utcNow('u')]",
+      "metadata": {
+        "description": "Current date."
+      }
+    },    
+    "offsetDay": {
+      "type": "string",
+      "defaultValue": "180",
+      "metadata": {
+        "description": "day offset of token expiry date."
+      }
+    }
+  },
+  "variables": {
+    "appInsightsName": "[concat('ai', parameters('name'))]",  
+    "databaseServiceName": "[concat('cosmos',parameters('name'))]",
+    "databaseName": "[concat('db',parameters('name'))]",    
+    "storageAccountName": "[take(concat('sa', parameters('name')),24)]",
+    "storageInputContainerName":"[take(concat('input', parameters('name')),63)]",
+    "storageOutputContainerName":"[take(concat('output', parameters('name')),63)]",
+    "storageAccountId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",  
+    "appServicePlanName": "[concat('plan', parameters('name'))]",
+    "webAppName": "[concat('webapp', parameters('name'))]",
+    "functionName": "[concat('func', parameters('name'))]",
+    "containerRegistryName": "[concat('acr', parameters('name'))]",        
+    "accountSasProperties": {
+          "signedServices": "b",
+          "signedPermission": "rwdlacu",
+          "signedExpiry": "[dateTimeAdd(parameters('baseTime'), concat('P',parameters('offsetDay'),'D'))]",
+          "signedResourceTypes": "sco"
+      
+    }
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-05-01",
+      "name": "[variables('appInsightsName')]",
+      "type": "Microsoft.Insights/components",
+      "kind": "web",
+      "location": "[resourceGroup().location]",
+      "tags": {
+          "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('functionName'))]": "Resource"
+      },
+      "properties": {
+          "Application_Type": "web",
+          "ApplicationId": "[variables('appInsightsName')]"
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2019-08-01",
+      "name": "[variables('databaseServiceName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+      ],
+      "tags": {
+        "defaultExperience": "Core (SQL)"
+      },
+      "kind": "GlobalDocumentDB",
+      "properties": {
+        "ipRangeFilter": "104.42.195.92,40.76.54.131,52.176.6.30,52.169.50.45,52.187.184.26,0.0.0.0",
+        "enableAutomaticFailover": false,
+        "enableMultipleWriteLocations": false,
+        "isVirtualNetworkFilterEnabled": false,
+        "virtualNetworkRules": [
+        ],
+        "databaseAccountOfferType": "Standard",
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "Session",
+          "maxIntervalInSeconds": 5,
+          "maxStalenessPrefix": 100
+        },
+        "locations": [
+          {
+            "locationName": "[resourceGroup().location]",
+            "provisioningState": "Succeeded",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "capabilities": []
+      }
+    },         
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "kind": "StorageV2",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2019-04-01",
+      "location":  "[resourceGroup().location]",
+      "properties": {
+        "isHnsEnabled": false,
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "services": {
+            "file": {
+              "enabled": true
+            },
+            "blob": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2019-04-01",
+      "name": "[concat(variables('storageAccountName'), '/default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "cors": {
+          "corsRules": [                {
+            "allowedOrigins": [
+              "[concat('https://',variables('webAppName'),'.azurewebsites.net')]"
+            ],
+            "allowedMethods": [
+              "GET,DELETE,PUT,POST,PATCH"
+            ],
+            "maxAgeInSeconds": 3600,
+            "exposedHeaders": [
+              "*"
+            ],
+            "allowedHeaders": [
+              "*"
+            ]
+          }]
+        },
+        "deleteRetentionPolicy": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2019-04-01",
+      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageInputContainerName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "publicAccess": "None"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2019-04-01",
+      "name": "[concat(variables('storageAccountName'), '/default/',variables('storageOutputContainerName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "publicAccess": "None"
+      }
+    },      
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('appServicePlanName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('sku')]"
+      },
+      "kind": "linux",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('webAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux,container",
+      "identity": {
+        "type": "SystemAssigned"
+      },      
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('functionName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp,linux,container",
+      "identity": {
+        "type": "SystemAssigned"
+      },      
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.Insights/components', variables('appInsightsName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanName'))]",
+        "siteConfig": {
+          "appSettings": [
+              {
+                "name": "COSMOS_SERVICENAME",
+                "value": "[concat('https://',variables('databaseServiceName'),'.documents.azure.com:443/')]"
+              },
+              {
+                "name": "COSMOS_KEY",
+                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('databaseServiceName')),'2019-08-01').primaryMasterKey]"
+              },
+              {
+                "name": "COSMOS_DATABASENAME",
+                "value": "[variables('databaseName')]"
+              },
+              {
+                "name": "COSMOS_REGION",
+                "value": "[resourceGroup().location]"
+              },            
+              {
+                  "name": "AzureWebJobsStorage",
+                  "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
+              },
+              {
+                  "name": "FUNCTIONS_WORKER_RUNTIME",
+                  "value": "python"
+              },
+              {
+                  "name": "FUNCTIONS_EXTENSION_VERSION",
+                  "value": "~3"
+              },
+              {
+                  "name": "WEBSITES_ENABLE_APP_SERVICE_STORAGE",
+                  "value": "false"
+              },
+              {
+                "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                "value": "[reference(resourceId('microsoft.insights/components/', variables('appInsightsName')), '2015-05-01').InstrumentationKey]"
+              }              
+          ]
+        }        
+      }
+    },    
+    {
+      "comments": "CORS allow origins *.",
+      "type": "Microsoft.Web/sites/config",
+      "name": "[concat(variables('functionName'), '/web')]",
+      "apiVersion": "2016-08-01",
+      "properties": {
+        "cors": {
+          "allowedOrigins": [
+            "[concat('https://',variables('webAppName'),'.azurewebsites.net')]"
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('functionName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.ContainerRegistry/registries",
+      "apiVersion": "2017-10-01",
+      "name": "[variables('containerRegistryName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Standard"
+      },
+      "properties": {
+        "adminUserEnabled": false
+      }
+    }
+  ],
+  "outputs": {
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries',variables('containerRegistryName')),'2017-10-01').loginServer]"
+    },    
+    "webAppServer": {
+      "type": "string",
+      "value": "[concat('https://',variables('webAppName'),'.azurewebsites.net/')]"
+    },
+    "functionServer": {
+      "type": "string",
+      "value": "[concat('https://',variables('functionName'),'.azurewebsites.net/')]"
+    },    
+    "webAppName": {
+      "type": "string",
+      "value": "[variables('webAppName')]"
+    },
+    "functionName": {
+      "type": "string",
+      "value": "[variables('functionName')]"
+    },    
+    "acrName": {
+      "type": "string",
+      "value": "[variables('containerRegistryName')]"
+    },
+    "webAppTenantId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites',variables('webAppName')), '2018-02-01', 'Full').identity.tenantId]"
+    },
+    "webAppObjectId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites',variables('webAppName')), '2018-02-01', 'Full').identity.principalId]"
+    },
+    "cosmosDBServiceName":{
+      "type": "string",
+      "value": "[variables('databaseServiceName')]"
+    },
+    "cosmosDBName":{
+      "type": "string",
+      "value": "[variables('databaseName')]"
+    },
+    "cosmosDBServiceKey":{
+      "type": "string",
+      "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('databaseServiceName')),'2019-08-01').primaryMasterKey]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "storageAccountToken": {
+      "type": "string",
+      "value": "[listAccountSas(variables('StorageAccountName'), '2018-07-01', variables('accountSasProperties')).accountSasToken]"
+    },    
+    "inputContainerName": {
+      "type": "string",
+      "value": "[variables('storageInputContainerName')]"
+    },
+    "outputContainerName": {
+      "type": "string",
+      "value": "[variables('storageOutputContainerName')]"
+    },
+    "outputAppInsightsName": {
+      "value": "[variables('appInsightsName')]",
+      "type": "string"
+    },    
+    "outputAppInsightsConnectionString": {
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').ConnectionString]",
+      "type": "string"
+    },
+    "outputAppInsightsInstrumentationKey": {
+      "value": "[reference(resourceId('Microsoft.Insights/components', variables('appInsightsName')), '2020-02-02').InstrumentationKey]",
+      "type": "string"
+    }
+  }
+}

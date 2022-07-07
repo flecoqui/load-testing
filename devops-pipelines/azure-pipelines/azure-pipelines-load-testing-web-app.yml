@@ -1,0 +1,452 @@
+trigger:
+  branches:
+    include:
+    - "main"
+  paths:
+    include:
+    - devops-pipelines/azure-pipelines/azure-pipelines-load-testing-web-app.yml
+    - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
+    - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
+    - devops-pipelines/load-testing/load-testing-web-app.yaml
+    - devops-pipelines/load-testing/load-testing-web-app.jmx
+
+pool:
+  vmImage: ubuntu-latest
+
+parameters:
+  - name: azureADAuthenticationDisabled
+    displayName: Azure AD Authentication Disabled
+    type: boolean
+    default: false
+  - name: deploymentType
+    displayName: deployment Type for Frontend (WebUI), Backend (WebAPI) and Database (CosmosDB)
+    type: string
+    default: "web-storage-api-storage"
+    values:
+    - "web-storage-api-storage"
+    - "web-app-api-storage"
+    - "web-app-api-cosmosdb"
+#    - "web-storage-api-storage: WebUI/Storage, WebAPI/Function, Database/Storage"
+#    - "web-app-api-storage: WebUI/AppService, WebAPI/Function, Database/Storage"
+#    - "web-app-api-cosmosdb: WebUI/AppService, WebAPI/Function, Database/CosmosDB"
+  - name: servicePlanSku
+    displayName: Azure Service Plan Sku
+    type: string
+    default: "B2"
+    values:    
+    - "B1"
+    - "B2"
+    - "B3"
+    - "S1"
+    - "S2"
+    - "S3"
+    - "P1V2"
+    - "P2V2"
+    - "P3V2"
+    - "P1V3"
+    - "P2V3"
+    - "P3V3"
+  - name: duration
+    displayName: Azure Load Testing duration in seconds
+    type: number
+    default: 60
+  - name: threads
+    displayName: Azure Load Testing number of threads
+    type: number
+    default: 1
+
+variables:
+  - name: configurationFile
+    value:  './configuration/.default.env'
+  - group: load-testing-vg
+  - name: loadTestResource
+    value: "ldtest$(AZURE_APP_PREFIX)"
+  - name: loadTestResourceGroup
+    value: "ldtest$(AZURE_APP_PREFIX)rg" 
+
+
+stages:
+- stage: StageDeployInfrastructure
+  displayName: Stage Deploy Infrastructure
+  condition: succeeded()
+  jobs:
+  - job: JobDeployInfrastructure
+    displayName: Job Deploy Infrastructure    
+    steps:
+
+    - task: AzureCLI@2
+      displayName: 'Step Azure Authentication'  
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID" 
+          echo "##vso[task.setvariable variable=AZURE_TENANT_ID]$AZURE_TENANT_ID" 
+          echo "Service Principal Id: $servicePrincipalId"
+          echo "Service Principal Key: $servicePrincipalKey"
+          echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"          
+          echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"  
+          echo "WEB_APP_DOMAIN: $(WEB_APP_DOMAIN)"
+          echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
+          echo "Azure Infrastructure to test: ${{ parameters.deploymentType }}"
+          echo "Azure AD Authentication disabled : ${{ parameters.azureADAuthenticationDisabled }}"
+
+    - task: AzureCLI@2
+      displayName: 'Step Install Pre-requisites'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "AZURE_REGION=$(AZURE_REGION)" > ${{ variables.configurationFile }}
+          echo "AZURE_APP_PREFIX=$(AZURE_APP_PREFIX)" >> ${{ variables.configurationFile }}
+          echo "AZURE_SUBSCRIPTION_ID=$(AZURE_SUBSCRIPTION_ID)" >> ${{ variables.configurationFile }}
+          echo "AZURE_TENANT_ID=$(AZURE_TENANT_ID)" >> ${{ variables.configurationFile }}
+          cat ${{ variables.configurationFile }}
+          
+    - task: AzureCLI@2
+      displayName: 'Step Deploy Infrastructure ${{ parameters.deploymentType }}'
+      name: StepDeployInfrastructure
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        failOnStandardError: "true" 
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a deploy -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -k ${{ parameters.servicePlanSku }} -e true -s true" 
+          echo "##[command]$cmd"
+          eval "$cmd"
+          # Read new variables set after the deployment in configuration file
+          set -o allexport
+          source "${{ variables.configurationFile }}"
+          set +o allexport
+          # Create the associated Azure DevOps variables
+          echo "##vso[task.setvariable variable=ACR_LOGIN_SERVER;isOutput=true]${ACR_LOGIN_SERVER}"
+          echo "##vso[task.setvariable variable=WEB_APP_SERVER;isOutput=true]${WEB_APP_SERVER}"
+          echo "##vso[task.setvariable variable=FUNCTION_SERVER;isOutput=true]${FUNCTION_SERVER}"
+          echo "##vso[task.setvariable variable=WEB_APP_DOMAIN;isOutput=true]${WEB_APP_DOMAIN}"
+          echo "##vso[task.setvariable variable=FUNCTION_DOMAIN;isOutput=true]${FUNCTION_DOMAIN}"
+          echo "##vso[task.setvariable variable=COSMOS_DB_SERVICE_NAME;isOutput=true]${COSMOS_DB_SERVICE_NAME}"
+          echo "##vso[task.setvariable variable=STORAGE_ACCOUNT_NAME;isOutput=true]${STORAGE_ACCOUNT_NAME}"
+          echo "##vso[task.setvariable variable=APP_INSIGHTS_NAME;isOutput=true]${APP_INSIGHTS_NAME}"
+
+- stage: StageBuildDeploy
+  displayName: Build and deploy 
+  dependsOn: StageDeployInfrastructure 
+  variables:
+    ACR_LOGIN_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.ACR_LOGIN_SERVER'] ]
+    WEB_APP_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.WEB_APP_SERVER'] ]
+    FUNCTION_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.FUNCTION_SERVER'] ]
+    WEB_APP_DOMAIN: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.WEB_APP_DOMAIN'] ]
+    FUNCTION_DOMAIN: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.FUNCTION_DOMAIN'] ]
+    COSMOS_DB_SERVICE_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.COSMOS_DB_SERVICE_NAME'] ]
+    STORAGE_ACCOUNT_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STORAGE_ACCOUNT_NAME'] ]
+    APP_INSIGHTS_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.APP_INSIGHTS_NAME'] ]
+
+  jobs:
+  - job: JobBuild
+    displayName: Job Build
+    steps:
+
+    - task: AzureCLI@2
+      displayName: 'Step Azure Authentication'  
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID" 
+          echo "##vso[task.setvariable variable=AZURE_TENANT_ID]$AZURE_TENANT_ID" 
+          echo "Service Principal Id: $servicePrincipalId"
+          echo "Service Principal Key: $servicePrincipalKey"
+          echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"          
+          echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"  
+          echo "WEB_APP_DOMAIN: $(WEB_APP_DOMAIN)"
+          echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
+          echo "Azure Infrastructure to test: ${{ parameters.deploymentType }}"
+          echo "Azure AD Authentication disabled : ${{ parameters.azureADAuthenticationDisabled }}"
+
+    - task: AzureCLI@2
+      displayName: 'Step Install Pre-requisites'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "AZURE_REGION=$(AZURE_REGION)" > ${{ variables.configurationFile }}
+          echo "AZURE_APP_PREFIX=$(AZURE_APP_PREFIX)" >> ${{ variables.configurationFile }}
+          echo "AZURE_SUBSCRIPTION_ID=$(AZURE_SUBSCRIPTION_ID)" >> ${{ variables.configurationFile }}
+          echo "AZURE_TENANT_ID=$(AZURE_TENANT_ID)" >> ${{ variables.configurationFile }}
+          cat ${{ variables.configurationFile }}
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a install -c ${{ variables.configurationFile }} -e true" 
+          echo "##[command]$cmd"
+          eval "$cmd"
+
+    - task: AzureCLI@2
+      displayName: 'Step Get or Create ApplicationId'
+      name: StepCreateApplication
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        failOnStandardError: "true"
+        inlineScript: |
+          if [ -z $AZURE_APP_ID ]; then
+            echo "##[command]Creating AZURE_APP_ID..."
+            cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a createapp -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -e true -s true"
+            echo "##[command]$cmd"
+            eval "$cmd"
+            # Read new variables set after the creation of the Application in configuration file
+            cat "${{ variables.configurationFile }}"
+            set -o allexport
+            source "${{ variables.configurationFile }}"
+            set +o allexport
+            echo "##[command]New AZURE_APP_ID: ${AZURE_APP_ID}"
+            # Create the associated Azure DevOps variables
+            echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]$AZURE_APP_ID"
+          else
+            echo "##[command]Existing AZURE_APP_ID: $AZURE_APP_ID"          
+            # Create the associated Azure DevOps variables
+            echo "##vso[task.setvariable variable=AZURE_APP_ID;isOutput=true]$AZURE_APP_ID"            
+          fi  
+          if [ -z $AZURE_APP_ID ]; then
+              echo "##[error]Variable AZURE_APP_ID is not defined, do you have enough privilege to create an application?"
+              exit 1
+          fi          
+
+    - task: AzureCLI@2
+      displayName: 'Step Build Web API container ${{ parameters.deploymentType }}'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        failOnStandardError: "true" 
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          if [[ -z "$AZURE_APP_ID" || "$AZURE_APP_ID" == 'null' || "$AZURE_APP_ID" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=$(AZURE_APP_ID)
+          fi
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a buildbe -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ parameters.azureADAuthenticationDisabled }}"  
+          echo "##[command]$cmd"
+          eval "$cmd"
+
+    - task: AzureCLI@2
+      displayName: 'Step Build Web UI container ${{ parameters.deploymentType }}'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        failOnStandardError: "true" 
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          if [[ -z "$AZURE_APP_ID" || "$AZURE_APP_ID" == 'null' || "$AZURE_APP_ID" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=$(AZURE_APP_ID)
+          fi
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a buildfe -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ parameters.azureADAuthenticationDisabled }}" 
+          echo "##[command]$cmd"
+          eval "$cmd"
+
+    - task: AzureCLI@2
+      displayName: 'Step Deploy Web API container ${{ parameters.deploymentType }}'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        failOnStandardError: "true" 
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          if [[ -z "$AZURE_APP_ID" || "$AZURE_APP_ID" == 'null' || "$AZURE_APP_ID" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=$(AZURE_APP_ID)
+          fi
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a deploybe -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true"
+          echo "##[command]$cmd"
+          eval "$cmd"
+
+    - task: AzureCLI@2
+      displayName: 'Step Deploy Web UI container ${{ parameters.deploymentType }}'
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        failOnStandardError: "true" 
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          if [[ -z "$AZURE_APP_ID" || "$AZURE_APP_ID" == 'null' || "$AZURE_APP_ID" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=$(AZURE_APP_ID)
+          fi
+          cmd="$(System.DefaultWorkingDirectory)/devops-pipelines/utils/iactool.sh -a deployfe -c ${{ variables.configurationFile }} -d ${{ parameters.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true"
+          echo "##[command]$cmd"
+          eval "$cmd"
+
+- stage: StageLoadTest
+  displayName: Load Test
+  dependsOn: 
+  - StageBuildDeploy
+  - StageDeployInfrastructure 
+  variables:
+    ACR_LOGIN_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.ACR_LOGIN_SERVER'] ]
+    WEB_APP_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.WEB_APP_SERVER'] ]
+    FUNCTION_SERVER: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.FUNCTION_SERVER'] ]
+    WEB_APP_DOMAIN: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.WEB_APP_DOMAIN'] ]
+    FUNCTION_DOMAIN: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.FUNCTION_DOMAIN'] ]
+    COSMOS_DB_SERVICE_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.COSMOS_DB_SERVICE_NAME'] ]
+    STORAGE_ACCOUNT_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STORAGE_ACCOUNT_NAME'] ]
+    APP_INSIGHTS_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.APP_INSIGHTS_NAME'] ]
+    AZURE_APP_ID: $[ stageDependencies.StageBuildDeploy.JobBuild.outputs['StepCreateApplication.AZURE_APP_ID'] ]
+
+  condition: succeeded()
+  jobs:
+  - job: JobLoadTest
+    displayName: Job Load Test
+    steps:
+    
+    - task: AzureCLI@2
+      displayName: 'Step Azure Authentication'  
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID" 
+          echo "##vso[task.setvariable variable=AZURE_TENANT_ID]$AZURE_TENANT_ID" 
+          echo "Service Principal Id: $servicePrincipalId"
+          echo "Service Principal Key: $servicePrincipalKey"
+          echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"          
+          echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"  
+          echo "WEB_APP_DOMAIN: $(WEB_APP_DOMAIN)"
+          echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
+          echo "Azure Infrastructure to test: ${{ parameters.deploymentType }}"
+          echo "Azure AD Authentication disabled : ${{ parameters.azureADAuthenticationDisabled }}"
+          
+          # Get Access Token azureADAuthenticationDisabled = False
+          if [ "${{ parameters.azureADAuthenticationDisabled }}" == "False" ]; then
+            echo "AZURE_APP_ID: $(AZURE_APP_ID)"
+            if [ -z $AZURE_AD_TOKEN ]; then
+              AZURE_AD_TOKEN="Bearer $(az account get-access-token --resource api://$(AZURE_APP_ID) | jq -r .accessToken)"
+              echo "New AZURE_AD_TOKEN: $AZURE_AD_TOKEN"          
+              echo "##vso[task.setvariable variable=AZURE_AD_TOKEN;issecret=true]$AZURE_AD_TOKEN"
+            else
+              echo "Existing AZURE_AD_TOKEN: $AZURE_AD_TOKEN"          
+              echo "##vso[task.setvariable variable=AZURE_AD_TOKEN;issecret=true]$AZURE_AD_TOKEN"
+            fi 2>/dev/null                  
+          fi
+
+    - task: AzureCLI@2
+      displayName: 'Step Display Load Testing parameters'
+      name: test
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "AZURE_APP_ID: $(AZURE_APP_ID)"
+          echo "AZURE_AD_TOKEN: $(AZURE_AD_TOKEN)"  
+          echo "WEB_APP_DOMAIN: $(WEB_APP_DOMAIN)"
+          echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
+          echo "Duration: ${{ parameters.duration }}"
+          echo "Threads: ${{ parameters.threads }}"          
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Step Deploy Load Testing ${{ parameters.deploymentType }}'      
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(SERVICE_CONNECTION)
+        subscriptionId: $(AZURE_SUBSCRIPTION_ID)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: $(loadTestResourceGroup)
+        location: '$(AZURE_REGION)'
+        templateLocation: 'Linked artifact'
+        csmFile: '$(System.DefaultWorkingDirectory)/infra/load-testing/arm/template.json'
+        overrideParameters: '-name $(loadTestResource) -location "$(AZURE_REGION)" -tags {"Environment":"Dev","Project":"load-testing"} '
+        deploymentMode: 'Incremental'    
+    
+    - task: AzureLoadTest@1
+      displayName: 'Step Run Load Testing Web App without Auth'  
+      condition: eq('${{ parameters.azureADAuthenticationDisabled }}', 'True')    
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml'
+        resourceGroup: $(loadTestResourceGroup)
+        loadTestResource: $(loadTestResource)     
+        env: |
+          [
+            {
+            "name": "webapp",
+            "value": "$(WEB_APP_DOMAIN)"
+            },
+            {
+            "name": "function",
+            "value": "$(FUNCTION_DOMAIN)"
+            },
+            {
+            "name": "duration",
+            "value": "${{ parameters.duration }}"
+            },
+            {
+            "name": "threads",
+            "value": "${{ parameters.threads }}"
+            }          
+          ]
+
+    - task: AzureLoadTest@1
+      displayName: 'Step Run Load Testing Web App with Auth'  
+      condition: eq('${{ parameters.azureADAuthenticationDisabled }}', 'False')    
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
+        resourceGroup: $(loadTestResourceGroup)
+        loadTestResource: $(loadTestResource)
+        secrets: |
+          [
+            {
+            "name": "token",
+            "value": "$(AZURE_AD_TOKEN)"  
+            }              
+          ]        
+        env: |
+          [
+            {
+            "name": "webapp",
+            "value": "$(WEB_APP_DOMAIN)"
+            },
+            {
+            "name": "function",
+            "value": "$(FUNCTION_DOMAIN)"
+            },
+            {
+            "name": "duration",
+            "value": "${{ parameters.duration }}"
+            },
+            {
+            "name": "threads",
+            "value": "${{ parameters.threads }}"
+            }                      
+          ]
+
+
+    - publish: $(System.DefaultWorkingDirectory)/loadTest
+      displayName: 'Step Publish Load Testing Results for deployment ${{ parameters.deploymentType }} in $(System.DefaultWorkingDirectory)/loadTest'
+      artifact: results

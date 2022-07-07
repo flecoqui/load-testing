@@ -1,0 +1,38 @@
+{
+  "version": "220328.201515",
+  "clientId": "TO-BE-COMPLETED",
+  "authority": "https://login.microsoftonline.com/TO-BE-COMPLETED",
+  "redirectUri": "https://TO-BE-COMPLETED.azurewebsites.net/",
+  "cacheLocation": "sessionStorage",
+  "storeAuthStateInCookie": false,
+  "loginRequest": {
+    "scopes": [
+      "openid",
+      "profile",
+      "User.Read"
+    ]
+  },
+  "tokenStorageRequest": {
+    "scopes": [
+      "User.Read",
+      "Mail.Read",
+      "https://storage.azure.com/user_impersonation"
+    ]
+  },
+  "tokenAPIRequest": {
+    "scopes": [
+      "api://TO-BE-COMPLETED/user_impersonation"
+    ]
+  },
+  "graphMeEndpoint": "https://graph.microsoft.com/v1.0/me",
+  "graphMailEndpoint": "https://graph.microsoft.com/v1.0/me/messages",
+  "tenantId": "TO-BE-COMPLETED",
+  "storageAccountName": "TO-BE-COMPLETED",
+  "storageInputContainerName": "TO-BE-COMPLETED",
+  "storageOutputContainerName": "TO-BE-COMPLETED",
+  "storageSASToken": "",
+  "apiEndpoint": "https://TO-BE-COMPLETED.azurewebsites.net/",
+  "logLevel": "debug",
+  "appInsightsKey": "to be completed",
+  "authorizationDisabled": false
+}

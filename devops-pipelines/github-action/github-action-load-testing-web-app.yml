@@ -1,0 +1,207 @@
+name: LoadTestingWebApp
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-web-app.yml
+      - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
+      - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
+      - devops-pipelines/load-testing/load-testing-web-app.yaml
+      - devops-pipelines/load-testing/load-testing-web-app.jmx   
+   
+  pull_request:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-web-app.yml
+      - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
+      - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
+      - devops-pipelines/load-testing/load-testing-web-app.yaml
+      - devops-pipelines/load-testing/load-testing-web-app.jmx
+
+  workflow_dispatch:
+    inputs:
+      flutter_version:
+        description: 'Framework version'
+        required: true
+        default: '2.5.3'
+      publish_artifacts:
+        description: 'Publish artifacts'
+        required: true
+        default: 'true'
+
+      azureADAuthenticationDisabled:
+        description: 'Azure AD Authentication Disabled'
+        required: true
+        default: false
+      deploymentType:
+        description: 'deployment Type for Frontend (WebUI), Backend (WebAPI) and Database (CosmosDB)'
+        required: true
+        default: 'web-storage-api-storage'
+        values:
+        - 'web-storage-api-storage'
+        - 'web-app-api-storage'
+        - 'web-app-api-cosmosdb'
+    #    - "web-storage-api-storage: WebUI/Storage, WebAPI/Function, Database/Storage"
+    #    - "web-app-api-storage: WebUI/AppService, WebAPI/Function, Database/Storage"
+    #    - "web-app-api-cosmosdb: WebUI/AppService, WebAPI/Function, Database/CosmosDB"
+      servicePlanSku:
+        description: 'Azure Service Plan Sku'
+        default: "B2"
+        required: true
+        values:    
+        - "B1"
+        - "B2"
+        - "B3"
+        - "S1"
+        - "S2"
+        - "S3"
+        - "P1V2"
+        - "P2V2"
+        - "P3V2"
+        - "P1V3"
+        - "P2V3"
+        - "P3V3"
+      duration:
+        description: 'Azure Load Testing duration in seconds'
+        required: true
+        default: 60
+      threads:
+        description: 'Azure Load Testing number of threads'
+        required: true
+        default: 1
+
+env:
+  AZURE_REGION: 'eastus2'
+  AZURE_APP_PREFIX: 'visit1200'
+  configurationFile: './configuration/.default.env'
+  loadTestResource: "ldtest$AZURE_APP_PREFIX"
+  loadTestResourceGroup: "ldtest$AZURE_APP_PREFIXrg" 
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  stage-deploy-infrastructure:
+    runs-on: ubuntu-20.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Pre-requisites
+        run: |
+          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
+
+      - name: Integration Test services 
+        run: |
+          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
+
+  stage-build-deploy:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Install Pre-requisites
+        run: |
+          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
+
+      - name: Integration Test services 
+        run: |
+          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
+
+  stage-load-test:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: 'Step Run Load Testing Web App'
+        uses: azure/load-testing@v1
+        with:
+            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml'
+            resourceGroup: $(loadTestResourceGroup)
+            loadTestResource: $(loadTestResource)     
+            env: |
+              [
+                {
+                "name": "webapp",
+                "value": "$(WEB_APP_DOMAIN)"
+                },
+                {
+                "name": "function",
+                "value": "$(FUNCTION_DOMAIN)"
+                },
+                {
+                "name": "duration",
+                "value": "${{ parameters.duration }}"
+                },
+                {
+                "name": "threads",
+                "value": "${{ parameters.threads }}"
+                }          
+              ]
+
+      - name: 'Step Run Load Testing Web App with Auth'
+        uses: azure/load-testing@v1
+        with:
+            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
+            resourceGroup: $(loadTestResourceGroup)
+            loadTestResource: $(loadTestResource)     
+            secrets: |
+              [
+                {
+                "name": "token",
+                "value": "$(AZURE_AD_TOKEN)"  
+                }              
+              ]        
+            env: |
+              [
+                {
+                "name": "webapp",
+                "value": "$(WEB_APP_DOMAIN)"
+                },
+                {
+                "name": "function",
+                "value": "$(FUNCTION_DOMAIN)"
+                },
+                {
+                "name": "duration",
+                "value": "${{ parameters.duration }}"
+                },
+                {
+                "name": "threads",
+                "value": "${{ parameters.threads }}"
+                }                      
+              ]
+
+
+      - name: Install Pre-requisites
+        run: |
+          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
+
+      - name: Integration Test services 
+        run: |
+          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
+

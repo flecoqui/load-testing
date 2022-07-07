@@ -1,0 +1,9 @@
+version: v0.1
+testName: load-testing-web-app-test
+testPlan: load-testing-web-app.jmx
+description: 'load-testing-web-app Test Run'
+engineInstances: 1
+
+failureCriteria: 
+    - avg(response_time_ms) > 100
+    - percentage(error) > 5
