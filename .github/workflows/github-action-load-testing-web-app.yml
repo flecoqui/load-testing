@@ -261,10 +261,8 @@ jobs:
 
       - name: Create Resource Group
         continue-on-error: false
-        with:
-          inlineScript: |
+        run: |
             az group create --name "${{ env.LOAD_TEST_RESOURCE_GROUP }}" --location "${{ github.event.inputs.AZURE_REGION }}"
-          azPSVersion: "latest"      
           
       - name: Create Azure Load Testing resource
         uses: azure/arm-deploy@v1
