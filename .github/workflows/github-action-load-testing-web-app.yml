@@ -247,7 +247,7 @@ jobs:
 
   stage-load-test:
     runs-on: ubuntu-20.04
-    needs: stage-build-deploy
+    needs: [stage-build-deploy, stage-deploy-infrastructure]
 
     steps:
       - uses: actions/checkout@v2
@@ -287,6 +287,15 @@ jobs:
             fi 2>/dev/null                  
           fi
 
+      - name: Display Load Testing Variables
+        continue-on-error: false
+        run: |
+          echo "WEB_APP_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
+          echo "FUNCTION_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
+          echo "DURATION: ${{ github.event.inputs.duration }}"
+          echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "AZURE_AD_TOKEN: ${{ steps.gettoken.outputs.AZURE_AD_TOKEN }}"
+
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1
         if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'true' }}
@@ -298,11 +307,11 @@ jobs:
               [
                 {
                 "name": "webapp",
-                "value": "${{needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
                 },
                 {
                 "name": "function",
-                "value": "${{needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
                 },
                 {
                 "name": "duration",
@@ -332,11 +341,11 @@ jobs:
               [
                 {
                 "name": "webapp",
-                "value": "${{needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
                 },
                 {
                 "name": "function",
-                "value": "${{needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
                 },
                 {
                 "name": "duration",
