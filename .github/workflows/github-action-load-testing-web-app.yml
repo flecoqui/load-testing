@@ -169,27 +169,27 @@ jobs:
           echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
           cat ${{ env.CONFIGURATION_FILE }} 
           cmd="devops-pipelines/utils/iactool.sh -a install -c ${{ env.CONFIGURATION_FILE }} -e true" 
-          echo "##[command]$cmd"
+          echo "$cmd"
           eval "$cmd"
 
       - name: Get or Create ApplicationId
         id: creatapp
         run: |
-          if [ -z ${{ github.event.inputs.AZURE_APP_PREFIX }} ]; then
+          if [ -z ${{ github.event.inputs.AZURE_APP_ID }} ]; then
             echo "Creating AZURE_APP_ID..."
             cmd="devops-pipelines/utils/iactool.sh -a createapp -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -e true -s true"
-            echo "##[command]$cmd"
+            echo "$cmd"
             eval "$cmd"
             # Read new variables set after the creation of the Application in configuration file
             cat "${{ env.CONFIGURATION_FILE }}"
             set -o allexport
             source "${{ env.CONFIGURATION_FILE }}"
             set +o allexport
-            echo "##[command]New AZURE_APP_ID: ${AZURE_APP_ID}"
+            echo "New AZURE_APP_ID: ${AZURE_APP_ID}"
             # Create the associated output variable
              echo "::set-output name=AZURE_APP_ID::${AZURE_APP_ID}"
           else
-            echo "Existing AZURE_APP_ID: ${{ github.event.inputs.AZURE_APP_PREFIX }}"          
+            echo "Existing AZURE_APP_ID: ${{ github.event.inputs.AZURE_APP_ID }}"          
             # Create the associated Azure DevOps variables
             # Create the associated output variable
              echo "::set-output name=AZURE_APP_ID::${{ github.event.inputs.AZURE_APP_PREFIX }}"
@@ -207,7 +207,7 @@ jobs:
             AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
           fi
           cmd="devops-pipelines/utils/iactool.sh -a buildbe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ github.event.inputs.azureADAuthenticationDisabled }}" 
-          echo "##[command]$cmd"
+          echo "$cmd"
           eval "$cmd"
 
       - name: Build Web UI container for ${{ github.event.inputs.deploymentType }}
@@ -218,7 +218,7 @@ jobs:
             AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
           fi
           cmd="devops-pipelines/utils/iactool.sh -a buildfe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ github.event.inputs.azureADAuthenticationDisabled }}" 
-          echo "##[command]$cmd"
+          echo "$cmd"
           eval "$cmd"
 
       - name: Deploy Web API container for ${{ github.event.inputs.deploymentType }}
@@ -229,7 +229,7 @@ jobs:
             AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
           fi
           cmd="devops-pipelines/utils/iactool.sh -a deploybe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true " 
-          echo "##[command]$cmd"
+          echo "$cmd"
           eval "$cmd"
 
       - name: Deploy Web UI container for ${{ github.event.inputs.deploymentType }}
@@ -240,7 +240,7 @@ jobs:
             AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
           fi
           cmd="devops-pipelines/utils/iactool.sh -a deployfe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true " 
-          echo "##[command]$cmd"
+          echo "$cmd"
           eval "$cmd"
 
   stage-load-test:
