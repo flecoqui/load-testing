@@ -83,8 +83,6 @@ on:
         default: ""
 
 env:
-  AZURE_REGION: 'eastus2'
-  AZURE_APP_PREFIX: 'visit1200'
   CONFIGURATION_FILE: './configuration/.default.env'
   LOAD_TEST_RESOURCE: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}"
   LOAD_TEST_RESOURCE_GROUP: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}rg" 
@@ -260,6 +258,21 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+
+      - name: Create Resource Group
+        continue-on-error: false
+        with:
+          inlineScript: |
+            az group create --name "${{ env.LOAD_TEST_RESOURCE_GROUP }}" --location "${{ github.event.inputs.AZURE_REGION }}"
+          azPSVersion: "latest"      
+          
+      - name: Create Azure Load Testing resource
+        uses: azure/arm-deploy@v1
+        with:
+          resourceGroupName: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+          template: ./infra/load-testing/arm/template.json
+          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags={"Environment":"Dev","Project":"load-testing"}
+
       - name: Get Token
         id: gettoken
         run: |
@@ -336,3 +349,8 @@ jobs:
                 "value": "${{ github.event.inputs.threads }}"
                 }                      
               ]
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: loadTestResults
+          path: ${{ github.workspace }}/loadTest
