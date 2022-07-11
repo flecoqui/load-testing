@@ -25,12 +25,14 @@ on:
       azureADAuthenticationDisabled:
         description: 'Azure AD Authentication Disabled'
         required: true
+        type: boolean
         default: false
       deploymentType:
         description: 'deployment Type for Frontend (WebUI), Backend (WebAPI) and Database (CosmosDB)'
         required: true
+        type: choice
         default: 'web-storage-api-storage'
-        values:
+        options:
         - 'web-storage-api-storage'
         - 'web-app-api-storage'
         - 'web-app-api-cosmosdb'
@@ -40,8 +42,9 @@ on:
       servicePlanSku:
         description: 'Azure Service Plan Sku'
         default: "B2"
+        type: choice
         required: true
-        values:    
+        options:    
         - "B1"
         - "B2"
         - "B3"
@@ -57,11 +60,11 @@ on:
       duration:
         description: 'Azure Load Testing duration in seconds'
         required: true
-        default: 60
+        default: '60'
       threads:
         description: 'Azure Load Testing number of threads'
         required: true
-        default: 1
+        default: '1'
       AZURE_REGION:
         description: 'Azure Region for the deployment'
         required: true
@@ -149,11 +152,11 @@ jobs:
                 },
                 {
                 "name": "duration",
-                "value": "${{ parameters.duration }}"
+                "value": "${{ github.event.inputs.duration }}"
                 },
                 {
                 "name": "threads",
-                "value": "${{ parameters.threads }}"
+                "value": "${{ github.event.inputs.threads }}"
                 }          
               ]
 
@@ -182,10 +185,10 @@ jobs:
                 },
                 {
                 "name": "duration",
-                "value": "${{ parameters.duration }}"
+                "value": "${{ github.event.inputs.duration }}"
                 },
                 {
                 "name": "threads",
-                "value": "${{ parameters.threads }}"
+                "value": "${{ github.event.inputs.threads }}"
                 }                      
               ]
