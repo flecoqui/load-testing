@@ -107,6 +107,7 @@ jobs:
 
   stage-build-deploy:
     runs-on: ubuntu-20.04
+    needs: stage-deploy-infrastructure
 
     steps:
       - uses: actions/checkout@v2
@@ -124,6 +125,7 @@ jobs:
 
   stage-load-test:
     runs-on: ubuntu-20.04
+    needs: stage-build-deploy
 
     steps:
       - uses: actions/checkout@v2
