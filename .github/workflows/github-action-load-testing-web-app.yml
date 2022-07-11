@@ -75,11 +75,11 @@ on:
         default: "visit1212"
       AZURE_APP_ID:
         description: 'Application Id of the application created outside of the pipeline'
-        required: true
+        required: false
         default: ""
       AZURE_AD_TOKEN:
         description: 'Azure AD Token if created outside of the pipeline'
-        required: true
+        required: false
         default: ""
 
 env:
