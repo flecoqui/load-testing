@@ -332,7 +332,7 @@ if [[ "${action}" == "deployev" ]] ; then
         printProgress "Get current service principal objectId"
         UserType="ServicePrincipal"
         # shellcheck disable=SC2154        
-        UserSPMsiPrincipalId=$(az ad sp show --id "$servicePrincipalId" --query id --output tsv  2> /dev/null) || true
+        UserSPMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query id --output tsv  2> /dev/null) || true
     fi
 
     if [[ -n $UserSPMsiPrincipalId ]]; then
@@ -458,7 +458,7 @@ if [[ "${action}" == "deploybe" ]] ; then
     if [[ -z $WebAppMsiPrincipalId ]]; then
         printProgress "Get current service principal objectId"
         UserType="ServicePrincipal"
-        WebAppMsiPrincipalId=$(az ad sp show --id "$servicePrincipalId" --query id --output tsv  2> /dev/null) || true
+        WebAppMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query id --output tsv  2> /dev/null) || true
     fi
 
     if [[ -n $WebAppMsiPrincipalId ]]; then
@@ -764,7 +764,7 @@ if [[ "${action}" == "buildbe" ]] ; then
     if [[ -z $UserSPMsiPrincipalId ]]; then
         printProgress "Connected as Service Principal"
         # shellcheck disable=SC2154        
-        SPMsiPrincipalId=$(az ad sp show --id "$servicePrincipalId" --query appId --output tsv  2> /dev/null)
+        SPMsiPrincipalId=$(az ad sp show --id "$(az account show | jq -r .user.name)" --query appId --output tsv  2> /dev/null)
     fi
     if [[ -n $SPMsiPrincipalId ]]; then
         cmd="cat ./src/dotnet-web-api/appsettings.json  | jq -r '.AzureAd.AllowWebApiToBeAuthorizedByACL = true ' > "${TEMPDIR}tmp.$$.json" && mv "${TEMPDIR}tmp.$$.json" ./src/dotnet-web-api/appsettings.json"
