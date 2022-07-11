@@ -132,7 +132,7 @@ jobs:
           eval "$cmd"
           # Read new variables set after the deployment in configuration file
           set -o allexport
-          source "${{ variables.configurationFile }}"
+          source "${{ env.CONFIGURATION_FILE }}"
           set +o allexport
           # Create the associated Azure DevOps variables
           echo "::set-output name=ACR_LOGIN_SERVER::${ACR_LOGIN_SERVER}"
@@ -274,7 +274,7 @@ jobs:
 
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1
-        if: ${{ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "true" }}
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == "true" }}
         with:
             loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app.yaml'
             resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
