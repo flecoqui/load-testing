@@ -173,7 +173,7 @@ jobs:
           eval "$cmd"
 
       - name: Get or Create ApplicationId
-        id: creatapp
+        id: createapp
         run: |
           if [ -z ${{ github.event.inputs.AZURE_APP_ID }} ]; then
             echo "Creating AZURE_APP_ID..."
@@ -190,14 +190,18 @@ jobs:
              echo "::set-output name=AZURE_APP_ID::${AZURE_APP_ID}"
           else
             echo "Existing AZURE_APP_ID: ${{ github.event.inputs.AZURE_APP_ID }}"          
-            # Create the associated Azure DevOps variables
             # Create the associated output variable
-             echo "::set-output name=AZURE_APP_ID::${{ github.event.inputs.AZURE_APP_PREFIX }}"
+             echo "::set-output name=AZURE_APP_ID::${{ github.event.inputs.AZURE_APP_ID }}"
           fi  
-          if [ -z ${{ steps.creatapp.outputs.AZURE_APP_ID }} ]; then
+            
+      - name: Check ApplicationId
+        id: checkapp
+        run: |
+          if [ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} ]; then
               echo "Variable AZURE_APP_ID is not defined, do you have enough privilege to create an application?"
               exit 1
           fi   
+
 
       - name: Build Web API container for ${{ github.event.inputs.deploymentType }}
         run: |
