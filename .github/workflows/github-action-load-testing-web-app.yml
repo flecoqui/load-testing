@@ -274,8 +274,8 @@ jobs:
       - name: Get Token
         id: gettoken
         run: |
-          # Get Access Token azureADAuthenticationDisabled = False
-          if [ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "False" ]; then
+          # Get Access Token azureADAuthenticationDisabled = false
+          if [ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "false" ]; then
             echo "AZURE_APP_ID: ${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }}"
             if [ -z ${{ github.event.inputs.AZURE_AD_TOKEN }} ]; then
               AZURE_AD_TOKEN="Bearer $(az account get-access-token --resource api:// ${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }} | jq -r .accessToken)"
