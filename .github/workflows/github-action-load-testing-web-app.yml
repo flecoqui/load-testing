@@ -103,7 +103,7 @@ jobs:
 
       - name: Integration Test services 
         run: |
-          devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -d ${{ ${{ github.event.inputs.deploymentType }} -k ${{ github.event.inputs.servicePlanSku }} -e true -s true
+          devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -k ${{ github.event.inputs.servicePlanSku }} -e true -s true
 
   stage-build-deploy:
     runs-on: ubuntu-20.04
