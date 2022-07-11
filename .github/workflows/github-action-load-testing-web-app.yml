@@ -274,7 +274,7 @@ jobs:
 
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1
-        if: ${{ github.event.inputs.azureADAuthenticationDisabled == "true" }}
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'true' }}
         with:
             loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app.yaml'
             resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
@@ -301,7 +301,7 @@ jobs:
 
       - name: 'Step Run Load Testing Web App with Auth'
         uses: azure/load-testing@v1
-        if: ${{ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "false" }}
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'false' }}
         with:
             loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
             resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
