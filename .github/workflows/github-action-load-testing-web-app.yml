@@ -269,7 +269,7 @@ jobs:
         with:
           resourceGroupName: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
           template: ./infra/load-testing/arm/template.json
-          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags={"Environment":"Dev","Project":"load-testing"}
+          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags="{\"Environment\":\"Dev\",\"Project\":\"load-testing\"}"
 
       - name: Get Token
         id: gettoken
