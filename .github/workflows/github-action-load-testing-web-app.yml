@@ -278,7 +278,7 @@ jobs:
           if [ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "false" ]; then
             echo "AZURE_APP_ID: ${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }}"
             if [ -z ${{ github.event.inputs.AZURE_AD_TOKEN }} ]; then
-              AZURE_AD_TOKEN="Bearer $(az account get-access-token --resource api:// ${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }} | jq -r .accessToken)"
+              AZURE_AD_TOKEN="Bearer $(az account get-access-token --resource api://${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }} | jq -r .accessToken)"
               echo "New AZURE_AD_TOKEN: $AZURE_AD_TOKEN"          
               echo "::set-output name=AZURE_AD_TOKEN::$AZURE_AD_TOKEN"
             else
