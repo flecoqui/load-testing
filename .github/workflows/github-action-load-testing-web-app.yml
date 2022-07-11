@@ -139,9 +139,9 @@ jobs:
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1
         with:
-            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml'
-            resourceGroup: $(loadTestResourceGroup)
-            loadTestResource: $(loadTestResource)     
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}   
             env: |
               [
                 {
@@ -165,9 +165,9 @@ jobs:
       - name: 'Step Run Load Testing Web App with Auth'
         uses: azure/load-testing@v1
         with:
-            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
-            resourceGroup: $(loadTestResourceGroup)
-            loadTestResource: $(loadTestResource)     
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
             secrets: |
               [
                 {
