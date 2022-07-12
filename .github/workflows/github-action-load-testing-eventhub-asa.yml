@@ -209,6 +209,8 @@ jobs:
           # Get the eventhubs connection string
           connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
           echo "connectionStr: $connectionStr"
+
+          pushd ./devops-pipelines/load-testing/latency
           # Create directory to receive results
           if [ ! -d ./latencyloadtestresults ]; then
             mkdir ./latencyloadtestresults        
@@ -230,6 +232,7 @@ jobs:
           
           echo "$cmd"
           eval "$cmd"
+          popd
 
       - uses: actions/upload-artifact@v3
         with:
@@ -354,6 +357,8 @@ jobs:
           # Get the eventhubs connection string
           connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
           echo "connectionStr: $connectionStr"
+
+          pushd ./devops-pipelines/load-testing/latency
           # Create directory to receive results
           if [ ! -d ./latencyloadtestresults ]; then
             mkdir ./latencyloadtestresults        
@@ -375,6 +380,7 @@ jobs:
           
           echo "$cmd"
           eval "$cmd"
+          popd
 
       - uses: actions/upload-artifact@v3
         with:
