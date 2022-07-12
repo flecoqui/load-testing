@@ -207,7 +207,7 @@ jobs:
         continue-on-error: false
         run: |
           # Get the eventhubs connection string
-          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ github.event.inputs.RESOURCE_GROUP }} --namespace-name ${{ github.event.inputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
+          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
           echo "connectionStr: $connectionStr"
           # Create directory to receive results
           if [ ! -d ./latencyloadtestresults ]; then
@@ -217,11 +217,11 @@ jobs:
           cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
             --eventhubs-connection-string \"$connectionStr\" \
             --input-csv-input-1 ./data/events1.csv \
-            --eventhub-input-1-name \"${{ github.event.inputs.EVENTHUB_INPUT_1_NAME }}\" \
+            --eventhub-input-1-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}\" \
             --input-csv-input-2 ./data/events2.csv \
-            --eventhub-input-2-name \"${{ github.event.inputs.EVENTHUB_INPUT_2_NAME }}\" \
-            --eventhub-output-1-name \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_NAME }}\" \
-            --eventhub-output-1-consumer-group \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
+            --eventhub-input-2-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}\" \
+            --eventhub-output-1-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_NAME }}\" \
+            --eventhub-output-1-consumer-group \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
             --receiving-duration-max-seconds ${{ github.event.inputs.duration }} \
             --no-transmission-duration-seconds 5 \
             --junit-result-file ./latencyloadtestresults/output.xml \
@@ -352,7 +352,7 @@ jobs:
         continue-on-error: false
         run: |
           # Get the eventhubs connection string
-          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ github.event.inputs.RESOURCE_GROUP }} --namespace-name ${{ github.event.inputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
+          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
           echo "connectionStr: $connectionStr"
           # Create directory to receive results
           if [ ! -d ./latencyloadtestresults ]; then
@@ -362,11 +362,11 @@ jobs:
           cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
             --eventhubs-connection-string \"$connectionStr\" \
             --input-csv-input-1 ./data/events1.csv \
-            --eventhub-input-1-name \"${{ github.event.inputs.EVENTHUB_INPUT_1_NAME }}\" \
+            --eventhub-input-1-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}\" \
             --input-csv-input-2 ./data/events2.csv \
-            --eventhub-input-2-name \"${{ github.event.inputs.EVENTHUB_INPUT_2_NAME }}\" \
-            --eventhub-output-1-name \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_NAME }}\" \
-            --eventhub-output-1-consumer-group \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
+            --eventhub-input-2-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}\" \
+            --eventhub-output-1-name \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_NAME }}\" \
+            --eventhub-output-1-consumer-group \"${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
             --receiving-duration-max-seconds ${{ github.event.inputs.duration }} \
             --no-transmission-duration-seconds 5 \
             --junit-result-file ./latencyloadtestresults/output.xml \
@@ -404,7 +404,7 @@ jobs:
           jobState=$(az stream-analytics job show -n '${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}' -g '${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}' --query 'jobState' -o tsv)
           if [[ -z "$jobState" || "$jobState" == 'Created' ]]
           then
-            echo "The job $(STREAM_ANALYTICS_JOB_NAME) does not exist or is in Created state. No need to stop it."
+            echo "The job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }} does not exist or is in Created state. No need to stop it."
             exit 0
           fi
           echo "Stopping Stream Analytics Job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}..."
