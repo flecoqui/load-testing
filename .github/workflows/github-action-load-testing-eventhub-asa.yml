@@ -1,0 +1,413 @@
+name: LoadTestingEventhubASA
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
+      - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
+      - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx   
+   
+  pull_request:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
+      - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
+      - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx
+
+  workflow_dispatch:
+    inputs:
+      deploymentType:
+        description: 'deployment Type for EventHub and Stream Analytics'
+        required: true
+        type: choice
+        default: 'eventhub-asa'
+        options:
+        - 'eventhub-asa'
+    #    - "eventhub: EventHub Stream Analytics configuration"
+      eventhubSku:
+        description: 'Azure Event Hubs Sku'
+        default: "Standard"
+        type: choice
+        required: true
+        options:    
+        - "Basic"
+        - "Standard"
+        - "Premium"
+      duration:
+        description: 'Azure Load Testing duration in seconds'
+        required: true
+        default: '60'
+      threads:
+        description: 'Azure Load Testing number of threads'
+        required: true
+        default: '1'
+      AZURE_REGION:
+        description: 'Azure Region for the deployment'
+        required: true
+        default: "eastus2"
+      AZURE_APP_PREFIX:
+        description: 'Application prefix used for naming'
+        required: true
+        default: "visit1212"
+
+env:
+  CONFIGURATION_FILE: './configuration/.default.env'
+  LOAD_TEST_RESOURCE: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}"
+  LOAD_TEST_RESOURCE_GROUP: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}rg" 
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  stage-deploy-infrastructure:
+    runs-on: ubuntu-20.04
+    outputs:
+      EVENTHUB_NAME_SPACE: ${{ steps.deploy.outputs.EVENTHUB_NAME_SPACE }}
+      EVENTHUB_INPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_NAME }}
+      EVENTHUB_INPUT_2_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_NAME }}
+      EVENTHUB_OUTPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_NAME }}
+      EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME }}
+      EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME }}
+      EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}
+      STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.STORAGE_ACCOUNT_NAME }}
+      APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.APP_INSIGHTS_NAME }}
+      RESOURCE_GROUP: ${{ steps.deploy.outputs.RESOURCE_GROUP }}
+      STREAM_ANALYTICS_JOB_NAME: ${{ steps.deploy.outputs.STREAM_ANALYTICS_JOB_NAME }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Configuration
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }}         
+
+      - name: Deploy Infrastructure 
+        id: deploy
+        run: |
+          cmd="devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -k ${{ github.event.inputs.servicePlanSku }} -e true -s true"
+          echo "$cmd"
+          eval "$cmd"
+          # Read new variables set after the deployment in configuration file
+          set -o allexport
+          source "${{ env.CONFIGURATION_FILE }}"
+          set +o allexport
+          # Create the associated Azure DevOps variables
+          echo "::set-output name=EVENTHUB_NAME_SPACE::${EVENTHUB_NAME_SPACE}"
+          echo "::set-output name=EVENTHUB_INPUT_1_NAME::${EVENTHUB_INPUT_1_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_2_NAME::${EVENTHUB_INPUT_2_NAME}"
+          echo "::set-output name=EVENTHUB_OUTPUT_1_NAME::${EVENTHUB_OUTPUT_1_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME::${EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME::${EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME::${EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=STORAGE_ACCOUNT_NAME::${STORAGE_ACCOUNT_NAME}"
+          echo "::set-output name=APP_INSIGHTS_NAME::${APP_INSIGHTS_NAME}"
+          echo "::set-output name=RESOURCE_GROUP::${RESOURCE_GROUP}"
+          echo "::set-output name=STREAM_ANALYTICS_JOB_NAME::${STREAM_ANALYTICS_JOB_NAME}"
+
+  stage-prepare-eventhub-asa:
+    runs-on: ubuntu-20.04
+    needs: stage-deploy-infrastructure
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Install Configuration
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }} 
+
+      - name: Prepare Event Hub and ASA
+        id: prepareeventhubasa
+        run: |
+          echo "Preparing Eventhub..."
+          cmd="devops-pipelines/utils/iactool.sh -a deployev -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -e true -s true"
+          echo "$cmd"
+          eval "$cmd"
+            
+      - name: Start Azure Stream Analytics Job
+        run: |
+          # Ensure that AZ cli extensions are installed silently
+          az config set extension.use_dynamic_install=yes_without_prompt
+
+          # Check if resource exists
+          jobname=$(az stream-analytics job show --resource-group '${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}' --job-name '${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}' -o json 2> /dev/null| jq -r '.name')
+
+          if [[ -n "$jobname" ]]
+          then
+            # Based on the state, --output-start-mode will not have the same value
+            jobState=$(az stream-analytics job show -n '${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}' -g '${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}' --query 'jobState' -o tsv)
+            if [ "$jobState" = 'Created' ]
+            then
+              echo "Starting Stream Analytics Job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}..."
+              az stream-analytics job start \
+                --job-name ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }} \
+                --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}"
+            else
+              echo "Starting Stream Analytics Job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}..."
+              az stream-analytics job start \
+                --job-name ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }} \
+                --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" \
+                --output-start-mode "LastOutputEventTime"
+            fi
+          else
+            echo "Stream Analytics Job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }} doesn't exist..."
+            exit 1
+          fi
+
+  stage-latency-measurement-during-load-test:
+    runs-on: ubuntu-20.04
+    needs: [stage-prepare-eventhub-asa, stage-deploy-infrastructure]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Display Python version
+        run: python --version
+      
+      - name: Install latency measurement dependencies
+        run:  pip install -r "./devops-pipelines/load-testing/latency/requirements.txt"
+
+      - name: Measure Latency during ${{ github.event.inputs.duration }} seconds
+        continue-on-error: false
+        run: |
+          # Get the eventhubs connection string
+          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ github.event.inputs.RESOURCE_GROUP }} --namespace-name ${{ github.event.inputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
+          echo "connectionStr: $connectionStr"
+          # Create directory to receive results
+          if [ ! -d ./latencyloadtestresults ]; then
+            mkdir ./latencyloadtestresults        
+          fi     
+
+          cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
+            --eventhubs-connection-string \"$connectionStr\" \
+            --input-csv-input-1 ./data/events1.csv \
+            --eventhub-input-1-name \"${{ github.event.inputs.EVENTHUB_INPUT_1_NAME }}\" \
+            --input-csv-input-2 ./data/events2.csv \
+            --eventhub-input-2-name \"${{ github.event.inputs.EVENTHUB_INPUT_2_NAME }}\" \
+            --eventhub-output-1-name \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_NAME }}\" \
+            --eventhub-output-1-consumer-group \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
+            --receiving-duration-max-seconds ${{ github.event.inputs.duration }} \
+            --no-transmission-duration-seconds 5 \
+            --junit-result-file ./latencyloadtestresults/output.xml \
+            --asyncio-mode=strict \
+            measure_latency.py"
+          
+          echo "$cmd"
+          eval "$cmd"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Latency-Load-Testing
+          path: devops-pipelines/load-testing/latency/latencyloadtestresults/output.xml
+
+
+  stage-load-test:
+    runs-on: ubuntu-20.04
+    needs: [stage-prepare-eventhub-asa, stage-deploy-infrastructure]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+      - name: Create Resource Group
+        continue-on-error: false
+        run: |
+            az group create --name "${{ env.LOAD_TEST_RESOURCE_GROUP }}" --location "${{ github.event.inputs.AZURE_REGION }}"
+          
+      - name: Create Azure Load Testing resource
+        uses: azure/arm-deploy@v1
+        with:
+          resourceGroupName: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+          template: ./infra/load-testing/arm/template.json
+          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags="{\"Environment\":\"Dev\",\"Project\":\"load-testing\"}"
+
+      - name: Get EventHub Token
+        id: geteventhubtoken
+        run: |
+          # Get Event Hub Token
+          key=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey | jq -r .primaryKey)
+          EVENTHUB_TOKEN=$(./devops-pipelines/load-testing/get-event-hub-token.sh ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} RootManageSharedAccessKey $key)
+          echo "::set-output name=EVENTHUB_TOKEN::${EVENTHUB_TOKEN}"
+
+      - name: Display Load Testing Variables
+        continue-on-error: false
+        run: |
+          echo "EVENTHUB_NAME_SPACE: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+          echo "EVENTHUB_INPUT_1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
+          echo "EVENTHUB_INPUT_2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+          echo "DURATION: ${{ github.event.inputs.duration }}"
+          echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "EVENTHUB_TOKEN: ${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
+
+      - name: 'Step Run Load Testing Web App'
+        uses: azure/load-testing@v1
+        with:
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-eventhub-asa.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}   
+            secrets: |
+              [
+                {
+                "name": "eventhub_token",
+                "value": "${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
+                }
+              ]           
+            env: |
+              [
+                {
+                "name": "eventhub_name_space",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+                },
+                {
+                "name": "eventhub_input_1",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
+                },
+                {
+                "name": "eventhub_input_2",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+                },     
+                {
+                "name": "duration",
+                "value": "${{ github.event.inputs.duration }}"
+                },
+                {
+                "name": "threads",
+                "value": "${{ github.event.inputs.threads }}"
+                }          
+              ]
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: loadTestResults
+          path: ${{ github.workspace }}/loadTest
+
+
+  stage-latency-measurement:
+    runs-on: ubuntu-20.04
+    needs: [stage-load-test, stage-latency-measurement-during-load-test, stage-deploy-infrastructure]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - name: Display Python version
+        run: python --version
+      
+      - name: Install latency measurement dependencies
+        run:  pip install -r "./devops-pipelines/load-testing/latency/requirements.txt"
+
+      - name: Measure Latency during ${{ github.event.inputs.duration }} seconds
+        continue-on-error: false
+        run: |
+          # Get the eventhubs connection string
+          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ github.event.inputs.RESOURCE_GROUP }} --namespace-name ${{ github.event.inputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
+          echo "connectionStr: $connectionStr"
+          # Create directory to receive results
+          if [ ! -d ./latencyloadtestresults ]; then
+            mkdir ./latencyloadtestresults        
+          fi     
+
+          cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
+            --eventhubs-connection-string \"$connectionStr\" \
+            --input-csv-input-1 ./data/events1.csv \
+            --eventhub-input-1-name \"${{ github.event.inputs.EVENTHUB_INPUT_1_NAME }}\" \
+            --input-csv-input-2 ./data/events2.csv \
+            --eventhub-input-2-name \"${{ github.event.inputs.EVENTHUB_INPUT_2_NAME }}\" \
+            --eventhub-output-1-name \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_NAME }}\" \
+            --eventhub-output-1-consumer-group \"${{ github.event.inputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}\" \
+            --receiving-duration-max-seconds ${{ github.event.inputs.duration }} \
+            --no-transmission-duration-seconds 5 \
+            --junit-result-file ./latencyloadtestresults/output.xml \
+            --asyncio-mode=strict \
+            measure_latency.py"
+          
+          echo "$cmd"
+          eval "$cmd"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Latency-Load-Testing
+          path: devops-pipelines/load-testing/latency/latencyloadtestresults/output.xml
+
+  stage-stop-asa-job:
+    runs-on: ubuntu-20.04
+    needs: [stage-latency-measurement, stage-deploy-infrastructure]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Stop Azure Stream Analytics Job
+        run: |
+          # Ensure that AZ cli extensions are installed silently
+          az config set extension.use_dynamic_install=yes_without_prompt
+
+
+          # Based on the state, --output-start-mode will not have the same value
+          jobState=$(az stream-analytics job show -n '${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}' -g '${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}' --query 'jobState' -o tsv)
+          if [[ -z "$jobState" || "$jobState" == 'Created' ]]
+          then
+            echo "The job $(STREAM_ANALYTICS_JOB_NAME) does not exist or is in Created state. No need to stop it."
+            exit 0
+          fi
+          echo "Stopping Stream Analytics Job ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }}..."
+          az stream-analytics job stop \
+            --job-name ${{ needs.stage-deploy-infrastructure.outputs.STREAM_ANALYTICS_JOB_NAME }} \
+            --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}"
