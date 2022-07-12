@@ -233,6 +233,8 @@ jobs:
           echo "$cmd"
           eval "$cmd"
           popd
+          echo "Results file content:"
+          cat ./devops-pipelines/load-testing/latency/latencyloadtestresults/output.xml
 
       - uses: actions/upload-artifact@v3
         with:
@@ -381,6 +383,8 @@ jobs:
           echo "$cmd"
           eval "$cmd"
           popd
+          echo "Results file content:"
+          cat ./devops-pipelines/load-testing/latency/latencyloadtestresults/output.xml
 
       - uses: actions/upload-artifact@v3
         with:
