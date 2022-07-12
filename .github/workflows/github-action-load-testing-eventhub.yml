@@ -151,7 +151,7 @@ jobs:
 
   stage-load-test:
     runs-on: ubuntu-20.04
-    needs: [stage-build-deploy, stage-deploy-infrastructure]
+    needs: [stage-prepare-eventhub, stage-deploy-infrastructure]
 
     steps:
       - uses: actions/checkout@v2
