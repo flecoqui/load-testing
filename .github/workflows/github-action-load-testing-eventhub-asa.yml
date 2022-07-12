@@ -388,7 +388,7 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: Latency-Load-Testing
+          name: Latency
           path: devops-pipelines/load-testing/latency/latencyloadtestresults/output.xml
 
   stage-stop-asa-job:
