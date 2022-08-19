@@ -127,7 +127,7 @@ public class VisitController : ControllerBase
     /// <param name="id">Visit id to retrieve</param>
     /// <returns>Task<IActionResult></returns>
     [HttpGet("{id}")]
-    [ProducesResponseType(typeof(List<Visit>), 200)]
+    [ProducesResponseType(typeof(Visit), 200)]
     [ProducesResponseType(typeof(String), 404)]
     [ProducesResponseType(typeof(Error), 500)]
     public async Task<IActionResult> GetAsync(string id)
@@ -157,7 +157,7 @@ public class VisitController : ControllerBase
     /// <param name="inputEntity">VisitCreateRequest object</param>
     /// <returns>Task<IActionResult></returns>
     [HttpPost()]
-    [ProducesResponseType(typeof(List<Visit>), 200)]
+    [ProducesResponseType(typeof(Visit), 200)]
     [ProducesResponseType(typeof(Error), 500)]
     public async Task<IActionResult> PostAsync([FromBody] VisitRequest inputEntity)
     {
@@ -193,7 +193,7 @@ public class VisitController : ControllerBase
     /// <param name="id">Visit id to update</param>
     /// <returns>Task<IActionResult></returns>
     [HttpPut("{id}")]
-    [ProducesResponseType(typeof(List<Visit>), 200)]
+    [ProducesResponseType(typeof(Visit), 200)]
     [ProducesResponseType(typeof(String), 404)]
     [ProducesResponseType(typeof(Error), 500)]
     public async Task<IActionResult> PutAsync([FromBody] VisitRequest entityRequest, string id)
@@ -240,7 +240,7 @@ public class VisitController : ControllerBase
     /// <param name="id">Visit id to delete</param>
     /// <returns>Task<IActionResult></returns>
     [HttpDelete("{id}")]
-    [ProducesResponseType(typeof(List<Visit>), 200)]
+    [ProducesResponseType(typeof(Visit), 200)]
     [ProducesResponseType(typeof(String), 404)]
     [ProducesResponseType(typeof(Error), 500)]
     public async Task<IActionResult> DeleteAsync(string id)

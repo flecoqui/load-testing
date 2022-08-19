@@ -193,7 +193,7 @@ namespace dotnet_web_api.Services
                 if (entity != null)
                 {
                     var response = await _tableClient.DeleteEntityAsync(PartitionKey, Id);
-                    if (response != null && response.Status == 204)
+                    if (response != null && response.Status == (int)HttpStatusCode.NoContent)
                     {
                         return entity;
                     }

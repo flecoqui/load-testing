@@ -210,6 +210,22 @@
       ]      
     },
     {
+      "type": "Microsoft.EventHub/namespaces/networkRuleSets",
+      "apiVersion": "2021-11-01",
+      "name": "[concat(variables('namespaceName'), '/default')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+          "[resourceId('Microsoft.EventHub/namespaces', variables('namespaceName'))]"
+      ],
+      "properties": {
+          "publicNetworkAccess": "Enabled",
+          "defaultAction": "Allow",
+          "virtualNetworkRules": [],
+          "ipRules": [
+          ]
+      }
+    },    
+    {
       "type": "Microsoft.Storage/storageAccounts",
       "sku": {
         "name": "Standard_LRS",

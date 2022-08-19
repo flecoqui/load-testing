@@ -1,0 +1,12 @@
+version: v0.1
+testName: load-testing-eventhub-firewall-test
+testPlan: load-testing-eventhub.jmx
+configurationFiles: [load-testing-eventhubevents1.csv, load-testing-eventhubevents2.csv] 
+description: 'load-testing-eventhub-firewall Test Run'
+engineInstances: 1
+subnetId:  {subnetId}
+
+failureCriteria: 
+    - avg(response_time_ms) > 100
+    - percentage(error) > 20
+

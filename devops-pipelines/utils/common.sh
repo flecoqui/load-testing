@@ -203,6 +203,12 @@ function deployAzureInfrastructure(){
     prefix=$3
     sku=$4
     template=$5
+    if [ $# -ge 6 ]
+    then
+        ip="$6"
+    else
+        ip=""
+    fi
 
     datadep=$(date +"%y%m%d-%H%M%S")
     resourcegroup="rg${prefix}"
@@ -213,14 +219,28 @@ function deployAzureInfrastructure(){
     eval "$cmd"
     checkError
 
-    cmd="az deployment group create \
-        --name $datadep \
-        --resource-group $resourcegroup \
-        --subscription $subscription \
-        --template-file $template \
-        --output none \
-        --parameters \
-        name=$prefix sku=$sku"
+    # if arg 6 ip address 
+    if [ -z "$ip" ]
+    then
+        cmd="az deployment group create \
+            --name $datadep \
+            --resource-group $resourcegroup \
+            --subscription $subscription \
+            --template-file $template \
+            --output none \
+            --parameters \
+            name=$prefix sku=$sku"
+    else
+        cmd="az deployment group create \
+            --name $datadep \
+            --resource-group $resourcegroup \
+            --subscription $subscription \
+            --template-file $template \
+            --output none \
+            --parameters \
+            name=$prefix sku=$sku ipAddress=\"$ip\""
+    fi
+
     printProgress "$cmd"
     eval "$cmd"
     checkError
@@ -326,7 +346,7 @@ function buildWebAppContainer() {
     # Build the image
     echo "Building the docker image for '$imageName:$imageTag'"
     cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Production\" . --only-show-errors 2> /dev/null"
-    #cmd="az acr build --registry $ContainerRegistryName --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --output none"
+    #cmd="az acr build --registry $ContainerRegistryName --resource-group ${RESOURCE_GROUP} --image ${imageName}:${imageTag} --image ${imageName}:${imageLatestTag} -f Dockerfile --build-arg APP_VERSION=${imageTag} --build-arg ARG_PORT_HTTP=${portHttp} --build-arg ARG_APP_ENVIRONMENT=\"Development\" . --only-show-errors 2> /dev/null"
     printProgress "$cmd"
     eval "$cmd"
 

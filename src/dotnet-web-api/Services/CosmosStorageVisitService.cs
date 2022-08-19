@@ -136,7 +136,7 @@ namespace dotnet_web_api.Services
             try
             {
                 HttpStatusCode code = (await _tableClient.UpsertItemAsync<VisitEntity>(entdb)).StatusCode;
-                return ((code == HttpStatusCode.NoContent) || (code == HttpStatusCode.OK))
+                return (code == HttpStatusCode.Created)
                     ? await RetrieveVisitAsync(entity.id)
                     : null;
             }
@@ -174,7 +174,7 @@ namespace dotnet_web_api.Services
             try
             {
                 HttpStatusCode code = (await _tableClient.UpsertItemAsync<VisitEntity>(entdb)).StatusCode;
-                return ((code == HttpStatusCode.NoContent) || (code == HttpStatusCode.OK))
+                return (code == HttpStatusCode.OK)
                     ? await RetrieveVisitAsync(entity.id)
                     : null;
             }

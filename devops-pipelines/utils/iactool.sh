@@ -226,6 +226,12 @@ if [[ "${action}" == "deploy" ]] ; then
         printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' prefix: '$AZURE_APP_PREFIX'"
         printMessage "       Backend: 'Azure EventHubs'"
         deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_APP_PREFIX" "$eventhubSku" "$SCRIPTS_DIRECTORY/../../infra/eventhub/arm/global.json"
+    elif [ "$deploymentType" == 'eventhub-firewall' ] ; then
+        printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' prefix: '$AZURE_APP_PREFIX'"
+        printMessage "       Backend: 'Azure EventHubs with Firewall'"
+        # Get Agent IP address
+        ip=$(curl -s http://ifconfig.me/ip) || true
+        deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_APP_PREFIX" "$eventhubSku" "$SCRIPTS_DIRECTORY/../../infra/eventhub-firewall/arm/global.json" "$ip"
     elif [ "$deploymentType" == 'eventhub-asa' ] ; then
         printMessage "Deploy infrastructure subscription: '$AZURE_SUBSCRIPTION_ID' region: '$AZURE_REGION' prefix: '$AZURE_APP_PREFIX'"
         printMessage "       Backend: 'Azure EventHubs'"
@@ -261,7 +267,7 @@ if [[ "${action}" == "deploy" ]] ; then
     else
         updateConfigurationFile "${configuration_file}" "COSMOS_DB_SERVICE_NAME" ""
     fi
-    if [ "$deploymentType" == 'eventhub' ] || [ "$deploymentType" == 'eventhub-asa' ]; then
+    if [ "$deploymentType" == 'eventhub' ] || [ "$deploymentType" == 'eventhub-firewall' ] || [ "$deploymentType" == 'eventhub-asa' ]; then
         printMessage "Eventhub name space:  ${EVENTHUB_NAME_SPACE}"
         printMessage "Eventhub input 1:  ${EVENTHUB_INPUT_1_NAME}"
         printMessage "Eventhub input 2:  ${EVENTHUB_INPUT_2_NAME}"

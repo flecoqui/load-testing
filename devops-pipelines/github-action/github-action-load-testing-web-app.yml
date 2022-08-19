@@ -22,24 +22,17 @@ on:
 
   workflow_dispatch:
     inputs:
-      flutter_version:
-        description: 'Framework version'
-        required: true
-        default: '2.5.3'
-      publish_artifacts:
-        description: 'Publish artifacts'
-        required: true
-        default: 'true'
-
       azureADAuthenticationDisabled:
         description: 'Azure AD Authentication Disabled'
         required: true
+        type: boolean
         default: false
       deploymentType:
         description: 'deployment Type for Frontend (WebUI), Backend (WebAPI) and Database (CosmosDB)'
         required: true
+        type: choice
         default: 'web-storage-api-storage'
-        values:
+        options:
         - 'web-storage-api-storage'
         - 'web-app-api-storage'
         - 'web-app-api-cosmosdb'
@@ -49,8 +42,9 @@ on:
       servicePlanSku:
         description: 'Azure Service Plan Sku'
         default: "B2"
+        type: choice
         required: true
-        values:    
+        options:    
         - "B1"
         - "B2"
         - "B3"
@@ -66,26 +60,47 @@ on:
       duration:
         description: 'Azure Load Testing duration in seconds'
         required: true
-        default: 60
+        default: '60'
       threads:
         description: 'Azure Load Testing number of threads'
         required: true
-        default: 1
+        default: '1'
+      AZURE_REGION:
+        description: 'Azure Region for the deployment'
+        required: true
+        default: "eastus2"
+      AZURE_APP_PREFIX:
+        description: 'Application prefix used for naming'
+        required: true
+        default: "visit1212"
+      AZURE_APP_ID:
+        description: 'Application Id of the application created outside of the pipeline'
+        required: false
+        default: ""
+      AZURE_AD_TOKEN:
+        description: 'Azure AD Token if created outside of the pipeline'
+        required: false
+        default: ""
 
 env:
-  AZURE_REGION: 'eastus2'
-  AZURE_APP_PREFIX: 'visit1200'
-  configurationFile: './configuration/.default.env'
-  loadTestResource: "ldtest$AZURE_APP_PREFIX"
-  loadTestResourceGroup: "ldtest$AZURE_APP_PREFIXrg" 
+  CONFIGURATION_FILE: './configuration/.default.env'
+  LOAD_TEST_RESOURCE: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}"
+  LOAD_TEST_RESOURCE_GROUP: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}rg" 
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   stage-deploy-infrastructure:
     runs-on: ubuntu-20.04
+    outputs:
+      ACR_LOGIN_SERVER: ${{ steps.deploy.outputs.ACR_LOGIN_SERVER }}
+      WEB_APP_SERVER: ${{ steps.deploy.outputs.WEB_APP_SERVER }}
+      FUNCTION_SERVER: ${{ steps.deploy.outputs.FUNCTION_SERVER }}
+      WEB_APP_DOMAIN: ${{ steps.deploy.outputs.WEB_APP_DOMAIN }}
+      FUNCTION_DOMAIN: ${{ steps.deploy.outputs.FUNCTION_DOMAIN }}
+      COSMOS_DB_SERVICE_NAME: ${{ steps.deploy.outputs.COSMOS_DB_SERVICE_NAME }}
+      STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.STORAGE_ACCOUNT_NAME }}
+      APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.APP_INSIGHTS_NAME }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -97,16 +112,41 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Install Pre-requisites
+      - name: Install Configuration
         run: |
-          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }}         
 
-      - name: Integration Test services 
+      - name: Deploy Infrastructure 
+        id: deploy
         run: |
-          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
+          cmd="devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -k ${{ github.event.inputs.servicePlanSku }} -e true -s true"
+          echo "$cmd"
+          eval "$cmd"
+          # Read new variables set after the deployment in configuration file
+          set -o allexport
+          source "${{ env.CONFIGURATION_FILE }}"
+          set +o allexport
+          # Create the associated Azure DevOps variables
+          echo "::set-output name=ACR_LOGIN_SERVER::${ACR_LOGIN_SERVER}"
+          echo "::set-output name=WEB_APP_SERVER::${WEB_APP_SERVER}"
+          echo "::set-output name=FUNCTION_SERVER::${FUNCTION_SERVER}"
+          echo "::set-output name=WEB_APP_DOMAIN::${WEB_APP_DOMAIN}"
+          echo "::set-output name=FUNCTION_DOMAIN::${FUNCTION_DOMAIN}"
+          echo "::set-output name=COSMOS_DB_SERVICE_NAME::${COSMOS_DB_SERVICE_NAME}"
+          echo "::set-output name=STORAGE_ACCOUNT_NAME::${STORAGE_ACCOUNT_NAME}"
+          echo "::set-output name=APP_INSIGHTS_NAME::${APP_INSIGHTS_NAME}"
 
   stage-build-deploy:
     runs-on: ubuntu-20.04
+    needs: stage-deploy-infrastructure
+    outputs:
+          AZURE_APP_ID: ${{ steps.createapp.outputs.AZURE_APP_ID }}
 
     steps:
       - uses: actions/checkout@v2
@@ -117,16 +157,97 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           
-      - name: Install Pre-requisites
+      - name: Install Configuration and Pre-requisites
         run: |
-          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }} 
+          cmd="devops-pipelines/utils/iactool.sh -a install -c ${{ env.CONFIGURATION_FILE }} -e true" 
+          echo "$cmd"
+          eval "$cmd"
 
-      - name: Integration Test services 
+      - name: Get or Create ApplicationId
+        id: createapp
         run: |
-          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
+          if [ -z ${{ github.event.inputs.AZURE_APP_ID }} ]; then
+            echo "Creating AZURE_APP_ID..."
+            cmd="devops-pipelines/utils/iactool.sh -a createapp -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -e true -s true"
+            echo "$cmd"
+            eval "$cmd"
+            # Read new variables set after the creation of the Application in configuration file
+            cat "${{ env.CONFIGURATION_FILE }}"
+            set -o allexport
+            source "${{ env.CONFIGURATION_FILE }}"
+            set +o allexport
+            echo "New AZURE_APP_ID: ${AZURE_APP_ID}"
+            # Create the associated output variable
+             echo "::set-output name=AZURE_APP_ID::${AZURE_APP_ID}"
+          else
+            echo "Existing AZURE_APP_ID: ${{ github.event.inputs.AZURE_APP_ID }}"          
+            # Create the associated output variable
+             echo "::set-output name=AZURE_APP_ID::${{ github.event.inputs.AZURE_APP_ID }}"
+          fi  
+            
+      - name: Check ApplicationId
+        id: checkapp
+        run: |
+          if [ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} ]; then
+              echo "Variable AZURE_APP_ID is not defined, do you have enough privilege to create an application?"
+              exit 1
+          fi   
+
+
+      - name: Build Web API container for ${{ github.event.inputs.deploymentType }}
+        run: |
+          if [[ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == 'null' || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
+          fi
+          cmd="devops-pipelines/utils/iactool.sh -a buildbe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ github.event.inputs.azureADAuthenticationDisabled }}" 
+          echo "$cmd"
+          eval "$cmd"
+
+      - name: Build Web UI container for ${{ github.event.inputs.deploymentType }}
+        run: |
+          if [[ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == 'null' || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
+          fi
+          cmd="devops-pipelines/utils/iactool.sh -a buildfe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true -z ${{ github.event.inputs.azureADAuthenticationDisabled }}" 
+          echo "$cmd"
+          eval "$cmd"
+
+      - name: Deploy Web API container for ${{ github.event.inputs.deploymentType }}
+        run: |
+          if [[ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == 'null' || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
+          fi
+          cmd="devops-pipelines/utils/iactool.sh -a deploybe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true " 
+          echo "$cmd"
+          eval "$cmd"
+
+      - name: Deploy Web UI container for ${{ github.event.inputs.deploymentType }}
+        run: |
+          if [[ -z ${{ steps.createapp.outputs.AZURE_APP_ID }} || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == 'null' || "${{ steps.createapp.outputs.AZURE_APP_ID }}" == '' ]] ; then
+            AZURE_APP_ID=""
+          else
+            AZURE_APP_ID=${{ steps.createapp.outputs.AZURE_APP_ID }}
+          fi
+          cmd="devops-pipelines/utils/iactool.sh -a deployfe -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -i  "\"$AZURE_APP_ID\"" -e true -s true " 
+          echo "$cmd"
+          eval "$cmd"
 
   stage-load-test:
     runs-on: ubuntu-20.04
+    needs: [stage-build-deploy, stage-deploy-infrastructure]
 
     steps:
       - uses: actions/checkout@v2
@@ -136,72 +257,107 @@ jobs:
         continue-on-error: false        
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+      - name: Create Resource Group
+        continue-on-error: false
+        run: |
+            az group create --name "${{ env.LOAD_TEST_RESOURCE_GROUP }}" --location "${{ github.event.inputs.AZURE_REGION }}"
           
+      - name: Create Azure Load Testing resource
+        uses: azure/arm-deploy@v1
+        with:
+          resourceGroupName: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+          template: ./infra/load-testing/arm/template.json
+          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags="{\"Environment\":\"Dev\",\"Project\":\"load-testing\"}"
+
+      - name: Get Token
+        id: gettoken
+        run: |
+          # Get Access Token azureADAuthenticationDisabled = false
+          if [ "${{ github.event.inputs.azureADAuthenticationDisabled }}" == "false" ]; then
+            echo "AZURE_APP_ID: ${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }}"
+            if [ -z ${{ github.event.inputs.AZURE_AD_TOKEN }} ]; then
+              AZURE_AD_TOKEN="Bearer $(az account get-access-token --resource api://${{ needs.stage-build-deploy.outputs.AZURE_APP_ID }} | jq -r .accessToken)"
+              echo "New AZURE_AD_TOKEN: $AZURE_AD_TOKEN"          
+              echo "::set-output name=AZURE_AD_TOKEN::$AZURE_AD_TOKEN"
+            else
+              echo "Existing AZURE_AD_TOKEN: ${{ github.event.inputs.AZURE_AD_TOKEN }}"          
+              echo "::set-output name=AZURE_AD_TOKEN::${{ github.event.inputs.AZURE_AD_TOKEN }}"
+            fi 2>/dev/null                  
+          fi
+
+      - name: Display Load Testing Variables
+        continue-on-error: false
+        run: |
+          echo "WEB_APP_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
+          echo "FUNCTION_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
+          echo "DURATION: ${{ github.event.inputs.duration }}"
+          echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "AZURE_AD_TOKEN: ${{ steps.gettoken.outputs.AZURE_AD_TOKEN }}"
+
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'true' }}
         with:
-            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml'
-            resourceGroup: $(loadTestResourceGroup)
-            loadTestResource: $(loadTestResource)     
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}   
             env: |
               [
                 {
                 "name": "webapp",
-                "value": "$(WEB_APP_DOMAIN)"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
                 },
                 {
                 "name": "function",
-                "value": "$(FUNCTION_DOMAIN)"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
                 },
                 {
                 "name": "duration",
-                "value": "${{ parameters.duration }}"
+                "value": "${{ github.event.inputs.duration }}"
                 },
                 {
                 "name": "threads",
-                "value": "${{ parameters.threads }}"
+                "value": "${{ github.event.inputs.threads }}"
                 }          
               ]
 
       - name: 'Step Run Load Testing Web App with Auth'
         uses: azure/load-testing@v1
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'false' }}
         with:
-            loadTestConfigFile: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
-            resourceGroup: $(loadTestResourceGroup)
-            loadTestResource: $(loadTestResource)     
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-web-app-auth.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
             secrets: |
               [
                 {
                 "name": "token",
-                "value": "$(AZURE_AD_TOKEN)"  
+                "value": "${{ steps.gettoken.outputs.AZURE_AD_TOKEN }}"  
                 }              
               ]        
             env: |
               [
                 {
                 "name": "webapp",
-                "value": "$(WEB_APP_DOMAIN)"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
                 },
                 {
                 "name": "function",
-                "value": "$(FUNCTION_DOMAIN)"
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
                 },
                 {
                 "name": "duration",
-                "value": "${{ parameters.duration }}"
+                "value": "${{ github.event.inputs.duration }}"
                 },
                 {
                 "name": "threads",
-                "value": "${{ parameters.threads }}"
+                "value": "${{ github.event.inputs.threads }}"
                 }                      
               ]
 
-
-      - name: Install Pre-requisites
-        run: |
-          pipelines/utils/avtool.sh -a install -c ${{ env.configurationFile }} -e true
-
-      - name: Integration Test services 
-        run: |
-          pipelines/utils/avtool.sh -a integration -c ${{ env.configurationFile }} -e true
-
+      - uses: actions/upload-artifact@v2
+        with:
+          name: loadTestResults
+          path: ${{ github.workspace }}/loadTest
