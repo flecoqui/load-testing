@@ -1,0 +1,290 @@
+name: LoadTestingEventhub
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
+      - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
+      - devops-pipelines/load-testing/load-testing-eventhub.jmx   
+   
+  pull_request:
+    branches: [ main ]
+    paths:
+      - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
+      - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
+      - devops-pipelines/load-testing/load-testing-eventhub.jmx
+
+  workflow_dispatch:
+    inputs:
+      deploymentType:
+        description: 'deployment Type for EventHub with firewall'
+        required: true
+        type: choice
+        default: 'eventhub-firewall'
+        options:
+        - 'eventhub-firewall'
+    #    - "eventhub: EventHub configuration"
+      eventhubSku:
+        description: 'Azure Event Hubs Sku'
+        default: "Standard"
+        type: choice
+        required: true
+        options:    
+        - "Basic"
+        - "Standard"
+        - "Premium"
+      duration:
+        description: 'Azure Load Testing duration in seconds'
+        required: true
+        default: '60'
+      threads:
+        description: 'Azure Load Testing number of threads'
+        required: true
+        default: '1'
+      AZURE_REGION:
+        description: 'Azure Region for the deployment'
+        required: true
+        default: "eastus2"
+      AZURE_APP_PREFIX:
+        description: 'Application prefix used for naming'
+        required: true
+        default: "visit1212"
+
+env:
+  CONFIGURATION_FILE: './configuration/.default.env'
+  LOAD_TEST_RESOURCE: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}"
+  LOAD_TEST_RESOURCE_GROUP: "ldtest${{ github.event.inputs.AZURE_APP_PREFIX }}rg" 
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  stage-deploy-infrastructure:
+    runs-on: ubuntu-20.04
+    outputs:
+      EVENTHUB_NAME_SPACE: ${{ steps.deploy.outputs.EVENTHUB_NAME_SPACE }}
+      EVENTHUB_INPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_NAME }}
+      EVENTHUB_INPUT_2_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_NAME }}
+      EVENTHUB_OUTPUT_1_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_NAME }}
+      EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME }}
+      EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME }}
+      EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: ${{ steps.deploy.outputs.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME }}
+      STORAGE_ACCOUNT_NAME: ${{ steps.deploy.outputs.STORAGE_ACCOUNT_NAME }}
+      APP_INSIGHTS_NAME: ${{ steps.deploy.outputs.APP_INSIGHTS_NAME }}
+      RESOURCE_GROUP: ${{ steps.deploy.outputs.RESOURCE_GROUP }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install Configuration
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }}         
+
+      - name: Deploy Infrastructure 
+        id: deploy
+        run: |
+          cmd="devops-pipelines/utils/iactool.sh -a deploy -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -h ${{ github.event.inputs.eventhubSku }} -e true -s true"
+          echo "$cmd"
+          eval "$cmd"
+          # Read new variables set after the deployment in configuration file
+          set -o allexport
+          source "${{ env.CONFIGURATION_FILE }}"
+          set +o allexport
+          # Create the associated Azure DevOps variables
+          echo "::set-output name=EVENTHUB_NAME_SPACE::${EVENTHUB_NAME_SPACE}"
+          echo "::set-output name=EVENTHUB_INPUT_1_NAME::${EVENTHUB_INPUT_1_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_2_NAME::${EVENTHUB_INPUT_2_NAME}"
+          echo "::set-output name=EVENTHUB_OUTPUT_1_NAME::${EVENTHUB_OUTPUT_1_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME::${EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME::${EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME::${EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME}"
+          echo "::set-output name=STORAGE_ACCOUNT_NAME::${STORAGE_ACCOUNT_NAME}"
+          echo "::set-output name=APP_INSIGHTS_NAME::${APP_INSIGHTS_NAME}"
+          echo "::set-output name=RESOURCE_GROUP::${RESOURCE_GROUP}"
+
+  stage-prepare-eventhub:
+    runs-on: ubuntu-20.04
+    needs: stage-deploy-infrastructure
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          
+      - name: Install Configuration
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "AZURE_REGION=${{ github.event.inputs.AZURE_REGION }}" > ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_APP_PREFIX=${{ github.event.inputs.AZURE_APP_PREFIX }}" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_SUBSCRIPTION_ID=$AZURE_SUBSCRIPTION_ID" >> ${{ env.CONFIGURATION_FILE }}
+          echo "AZURE_TENANT_ID=$AZURE_TENANT_ID" >> ${{ env.CONFIGURATION_FILE }}
+          cat ${{ env.CONFIGURATION_FILE }} 
+
+
+      - name: Prepare Event Hub
+        id: prepareeventhub
+        run: |
+          echo "Preparing Eventhub..."
+          cmd="devops-pipelines/utils/iactool.sh -a deployev -c ${{ env.CONFIGURATION_FILE }} -d ${{ github.event.inputs.deploymentType }} -e true -s true"
+          echo "$cmd"
+          eval "$cmd"
+            
+
+  stage-load-test:
+    runs-on: ubuntu-20.04
+    needs: [stage-prepare-eventhub, stage-deploy-infrastructure]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        continue-on-error: false        
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+      - name: Create Resource Group
+        continue-on-error: false
+        run: |
+            az group create --name "${{ env.LOAD_TEST_RESOURCE_GROUP }}" --location "${{ github.event.inputs.AZURE_REGION }}"
+          
+      - name: Create Azure Load Testing resource
+        uses: azure/arm-deploy@v1
+        id: deployloadtesting
+        with:
+          resourceGroupName: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+          template: ./infra/load-testing-firewall/arm/template.json
+          parameters: name="${{ env.LOAD_TEST_RESOURCE }}" location="${{ github.event.inputs.AZURE_REGION }}" tags="{\"Environment\":\"Dev\",\"Project\":\"load-testing\"}"
+
+      - name: Add Load Testing public IP in Event Hub firewall
+        id: addipaddresseventhubfirewall
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+
+          echo ${{ steps.deployloadtesting.outputs.publicIPAddress }}
+          LOAD_TESTING_IP_ADDRESS=${{ steps.deployloadtesting.outputs.publicIPAddress }}
+          echo "::set-output name=LOAD_TESTING_IP_ADDRESS::${LOAD_TESTING_IP_ADDRESS}"
+
+
+          echo ${{ steps.deployloadtesting.outputs.subnetId }}
+          LOAD_TESTING_SUBNET_ID=${{ steps.deployloadtesting.outputs.subnetId }}
+          echo "::set-output name=LOAD_TESTING_SUBNET_ID::${LOAD_TESTING_SUBNET_ID}"
+
+          # Update Load Testing configuration file to update the subnetId
+          sed -i "s/{subnetId}/\"${LOAD_TESTING_SUBNET_ID////\\/}\"/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          cat "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+
+
+          if [[ -n ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} ]]; then
+            echo "Check if '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace exists"
+            if [[ -n $(az eventhubs namespace show --name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" 2>/dev/null| jq -r .id) ]]; then
+              echo "Open '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace firewall to '$(LOAD_TESTING_IP_ADDRESS)'"
+              if [[ -n $(LOAD_TESTING_IP_ADDRESS) ]]; then
+                echo "Adding ip address $(LOAD_TESTING_IP_ADDRESS)"
+                echo "az eventhubs namespace network-rule add --ip-address $(LOAD_TESTING_IP_ADDRESS) --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} "
+                az eventhubs namespace network-rule add --ip-address $(LOAD_TESTING_IP_ADDRESS) --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}  >/dev/null
+              fi
+              sleep 30
+            fi
+          fi  
+
+      - name: Get EventHub Token
+        id: geteventhubtoken
+        run: |
+          # Get Event Hub Token
+          key=$(az eventhubs namespace authorization-rule keys list --resource-group ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --name RootManageSharedAccessKey | jq -r .primaryKey)
+          EVENTHUB_TOKEN=$(./devops-pipelines/load-testing/get-event-hub-token.sh ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} RootManageSharedAccessKey $key)
+          echo "::set-output name=EVENTHUB_TOKEN::${EVENTHUB_TOKEN}"
+
+
+
+      - name: Display Load Testing Variables
+        continue-on-error: false
+        run: |
+          echo "EVENTHUB_NAME_SPACE: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+          echo "EVENTHUB_INPUT_1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
+          echo "EVENTHUB_INPUT_2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+          echo "DURATION: ${{ github.event.inputs.duration }}"
+          echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "EVENTHUB_TOKEN: ${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
+
+      - name: 'Step Run Load Testing Web App'
+        uses: azure/load-testing@v1
+        with:
+            loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml'
+            resourceGroup: ${{ env.LOAD_TEST_RESOURCE_GROUP }}
+            loadTestResource: ${{ env.LOAD_TEST_RESOURCE }}
+            secrets: |
+              [
+                {
+                "name": "eventhub_token",
+                "value": "${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
+                }
+              ]           
+            env: |
+              [
+                {
+                "name": "eventhub_name_space",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+                },
+                {
+                "name": "eventhub_input_1",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
+                },
+                {
+                "name": "eventhub_input_2",
+                "value": "${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+                },     
+                {
+                "name": "duration",
+                "value": "${{ github.event.inputs.duration }}"
+                },
+                {
+                "name": "threads",
+                "value": "${{ github.event.inputs.threads }}"
+                }          
+              ]
+
+      - name: Remove Load Testing public IP in Event Hub firewall
+        id: removeipaddresseventhubfirewall
+        run: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          if [[ -n ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} ]]; then
+            echo "Check if  '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace exists"
+            if [[ -n $(az eventhubs namespace show --name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" 2>/dev/null| jq -r .id) ]]; then
+              echo "Close '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace firewall to '$(LOAD_TESTING_IP_ADDRESS)'"
+              if [[ -b $(LOAD_TESTING_IP_ADDRESS) ]]; then
+                echo "Removing ip address $(LOAD_TESTING_IP_ADDRESS) to access ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
+                az eventhubs namespace network-rule remove --ip-address $(LOAD_TESTING_IP_ADDRESS) --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}  >/dev/null
+              fi
+              sleep 30
+            fi
+          fi    
+
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: loadTestResults
+          path: ${{ github.workspace }}/loadTest
