@@ -65,6 +65,18 @@ on:
         description: 'Azure Load Testing number of threads'
         required: true
         default: '1'
+      engineInstances:
+        description: 'Azure Load Testing number of Engine Instances'
+        required: true
+        default: '1'
+      errorPercentage:
+        description: 'Azure Load Testing success criteria Error Percentage threshold' 
+        required: true
+        default: '5'
+      responseTimeMs: 
+        description: 'Azure Load Testing success criteria average response time in ms threshold' 
+        required: true
+        default: '100'        
       AZURE_REGION:
         description: 'Azure Region for the deployment'
         required: true
@@ -287,14 +299,43 @@ jobs:
             fi 2>/dev/null                  
           fi
 
-      - name: Display Load Testing Variables
+      - name: Configure and display Load Testing Configuration for Web App without Authentication
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'true' }}
         continue-on-error: false
         run: |
           echo "WEB_APP_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
           echo "FUNCTION_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
+          echo "AZURE_AD_TOKEN: ${{ steps.gettoken.outputs.AZURE_AD_TOKEN }}"
           echo "DURATION: ${{ github.event.inputs.duration }}"
           echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "ENGINE INSTANCES: ${{ github.event.inputs.engineInstances }}"          
+          echo "ERROR PERCENTAGE: ${{ github.event.inputs.errorPercentage }}"          
+          echo "RESPONSE TIME MS: ${{ github.event.inputs.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "./devops-pipelines/load-testing/load-testing-web-app.yaml"
+          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "./devops-pipelines/load-testing/load-testing-web-app.yaml"
+          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "./devops-pipelines/load-testing/load-testing-web-app.yaml"
+          echo "./devops-pipelines/load-testing/load-testing-web-app.yaml content:"
+          cat "./devops-pipelines/load-testing/load-testing-web-app.yaml"
+
+      - name: Configure and display Load Testing Configuration for Web App with Authentication
+        if: ${{ github.event.inputs.azureADAuthenticationDisabled == 'false' }}
+        continue-on-error: false
+        run: |
+          echo "WEB_APP_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.WEB_APP_DOMAIN }}"
+          echo "FUNCTION_DOMAIN: ${{ needs.stage-deploy-infrastructure.outputs.FUNCTION_DOMAIN }}"
           echo "AZURE_AD_TOKEN: ${{ steps.gettoken.outputs.AZURE_AD_TOKEN }}"
+          echo "DURATION: ${{ github.event.inputs.duration }}"
+          echo "THREADS: ${{ github.event.inputs.threads }}"
+          echo "ENGINE INSTANCES: ${{ github.event.inputs.engineInstances }}"          
+          echo "ERROR PERCENTAGE: ${{ github.event.inputs.errorPercentage }}"          
+          echo "RESPONSE TIME MS: ${{ github.event.inputs.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "./devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "./devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "./devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          echo "./devops-pipelines/load-testing/load-testing-web-app-auth.yaml content:"
+          cat "./devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
 
       - name: 'Step Run Load Testing Web App'
         uses: azure/load-testing@v1

@@ -43,6 +43,18 @@ on:
         description: 'Azure Load Testing number of threads'
         required: true
         default: '1'
+      engineInstances:
+        description: 'Azure Load Testing number of Engine Instances'
+        required: true
+        default: '1'
+      errorPercentage:
+        description: 'Azure Load Testing success criteria Error Percentage threshold' 
+        required: true
+        default: '5'
+      responseTimeMs: 
+        description: 'Azure Load Testing success criteria average response time in ms threshold' 
+        required: true
+        default: '100'        
       AZURE_REGION:
         description: 'Azure Region for the deployment'
         required: true
@@ -186,15 +198,11 @@ jobs:
           LOAD_TESTING_IP_ADDRESS=${{ steps.deployloadtesting.outputs.publicIPAddress }}
           echo "::set-output name=LOAD_TESTING_IP_ADDRESS::${LOAD_TESTING_IP_ADDRESS}"
 
-
           echo "SubnetId: ${{ steps.deployloadtesting.outputs.subnetId }}"
           LOAD_TESTING_SUBNET_ID=${{ steps.deployloadtesting.outputs.subnetId }}
           echo "::set-output name=LOAD_TESTING_SUBNET_ID::${LOAD_TESTING_SUBNET_ID}"
-
           # Update Load Testing configuration file to update the subnetId
           sed -i "s/{subnetId}/\"${LOAD_TESTING_SUBNET_ID////\\/}\"/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-          cat "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-
 
           if [[ -n ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} ]]; then
             echo "Check if '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace exists"
@@ -207,7 +215,7 @@ jobs:
               fi
               sleep 30
             fi
-          fi   
+          fi  
 
       - name: Get EventHub Token
         id: geteventhubtoken
@@ -217,19 +225,27 @@ jobs:
           EVENTHUB_TOKEN=$(./devops-pipelines/load-testing/get-event-hub-token.sh ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} RootManageSharedAccessKey $key)
           echo "::set-output name=EVENTHUB_TOKEN::${EVENTHUB_TOKEN}"
 
-
-
-      - name: Display Load Testing Variables
+      - name: Configure and display Load Testing Configuration for Eventhub
         continue-on-error: false
         run: |
           echo "EVENTHUB_NAME_SPACE: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}"
           echo "EVENTHUB_INPUT_1_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_1_NAME }}"
           echo "EVENTHUB_INPUT_2_NAME: ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_INPUT_2_NAME }}"
+          echo "EVENTHUB_TOKEN: ${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
           echo "DURATION: ${{ github.event.inputs.duration }}"
           echo "THREADS: ${{ github.event.inputs.threads }}"
-          echo "EVENTHUB_TOKEN: ${{ steps.geteventhubtoken.outputs.EVENTHUB_TOKEN }}"
+          echo "ENGINE INSTANCES: ${{ github.event.inputs.engineInstances }}"          
+          echo "ERROR PERCENTAGE: ${{ github.event.inputs.errorPercentage }}"          
+          echo "RESPONSE TIME MS: ${{ github.event.inputs.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
 
-      - name: 'Step Run Load Testing Web App'
+          echo "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml content:"
+          cat "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+
+      - name: 'Step Run Load Testing Eventhub Firewall'
         uses: azure/load-testing@v1
         with:
             loadTestConfigFile: 'devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml'
