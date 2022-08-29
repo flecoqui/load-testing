@@ -28,6 +28,18 @@ parameters:
     displayName: Azure Load Testing number of threads
     type: number
     default: 1
+  - name: engineInstances
+    displayName: Azure Load Testing number of Engine Instances
+    type: number
+    default: 1
+  - name: errorPercentage
+    displayName: Azure Load Testing success criteria Error Percentage threshold 
+    type: number
+    default: 5
+  - name: responseTimeMs
+    displayName: Azure Load Testing success criteria average response time in ms threshold 
+    type: number
+    default: 100    
 
 variables:
   - name: configurationFile
@@ -382,6 +394,28 @@ stages:
           key=$(az eventhubs namespace authorization-rule keys list --resource-group $(RESOURCE_GROUP) --namespace-name $(EVENTHUB_NAME_SPACE) --name RootManageSharedAccessKey | jq -r .primaryKey)
           EVENTHUB_TOKEN=$(./devops-pipelines/load-testing/get-event-hub-token.sh $(EVENTHUB_NAME_SPACE) RootManageSharedAccessKey $key)
           echo "##vso[task.setvariable variable=EVENTHUB_TOKEN;issecret=true]$EVENTHUB_TOKEN"
+
+
+    - task: AzureCLI@2
+      displayName: 'Step configure and display Load Testing Configuration for Eventhub and Azure Stream Analytics'
+      name: test
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "Duration: ${{ parameters.duration }}"
+          echo "Threads: ${{ parameters.threads }}"          
+          echo "Engine Instances: ${{ parameters.engineInstances }}"          
+          echo "Error Percentage: ${{ parameters.errorPercentage }}"          
+          echo "Response TimeMs: ${{ parameters.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}\"/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          echo "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-asa.yaml content:"
+          cat "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
 
     - task: AzureResourceManagerTemplateDeployment@3
       displayName: 'Step Deploy Load Testing ${{ variables.deploymentType }}'      

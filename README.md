@@ -763,19 +763,19 @@ stages:
 
 As the new pipelines will run Azure Load Testing, you need to install the Azure Load Testing for Azure DevOps.
 
-1. Click on the Market Place icon to browse the market place
+1. Click on the Market Place icon to browse the market place  
 ![azure-devops-market-1](./docs/img/azure-devops-market-1.png)
 
-2. Search for the Azure Load Testing component
+2. Search for the Azure Load Testing component  
 ![azure-devops-market-2](./docs/img/azure-devops-market-2.png)
 
-3. On the Azure Load Testing page click on the button "Get it Free"
+3. On the Azure Load Testing page click on the button "Get it Free"  
 ![azure-devops-market-3](./docs/img/azure-devops-market-3.png)
 
-4. On the Market Place page click on the button "Install"
+4. On the Market Place page click on the button "Install"  
 ![azure-devops-market-4](./docs/img/azure-devops-market-4.png)
 
-5. After few seconds the component is installed, Go back to Azure DevOps portal clicking on button "Proceed to organization"
+5. After few seconds the component is installed, Go back to Azure DevOps portal clicking on button "Proceed to organization"  
 ![azure-devops-market-5](./docs/img/azure-devops-market-5.png)
 
 #### Create and Run Azure DevOps pipeline for Web App Load Testing
@@ -822,23 +822,26 @@ In order to create this pipeline, follow the steps below:
     ![azure-devops-pipeline-08](./docs/img/azure-devops-pipeline-08.png)
 
 10. On the dialog box 'Run pipeline', select the 'main' branch and click on the button 'Run'.
-Check or not the box "Azure AD Authentication Disabled" to support Azure AD Authentication.
-Select the Web App infrastructure you wants to deploy: 'web-storage-api-storage', 'web-app-api-storage', 'web-app-api-cosmosdb'.
+Check or not the box "Azure AD Authentication Disabled" to support Azure AD Authentication.  
+Select the Web App infrastructure you wants to deploy: 'web-storage-api-storage', 'web-app-api-storage', 'web-app-api-cosmosdb'.  
 Select the App Service Plan sku.  
-Enter the duration of the test in seconds.
-Enter the number threads for the load testing.
+Enter the duration of the test in seconds.  
+Enter the number of threads for the load testing.  
+Enter the number of engine instances for the load testing.  
+Enter the error percentage threshold for the load testing.  
+Enter the average response time in milliseonds threshold for the load testing.  
 
     ![azure-devops-pipeline-09](./docs/img/azure-devops-pipeline-09.png)
 
-11. The pipeline is launched.
+1.  The pipeline is launched.
 
     ![azure-devops-pipeline-10](./docs/img/azure-devops-pipeline-10.png)
 
-12. After several minutes, the test is completed and the results are displayed on the page 'Pipelines' -> 'Pipelines'.
+2.  After several minutes, the test is completed and the results are displayed on the page 'Pipelines' -> 'Pipelines'.
 
     ![azure-devops-pipeline-11](./docs/img/azure-devops-pipeline-11.png)
 
-13. If you click on the artifact link you can download the results.
+3.  If you click on the artifact link you can download the results.
 
     ![azure-devops-pipeline-12](./docs/img/azure-devops-pipeline-12.png)
 
@@ -846,11 +849,11 @@ Enter the number threads for the load testing.
 
     ![azure-devops-pipeline-13](./docs/img/azure-devops-pipeline-13.png)
 
-14. On the result pipeline page, if you click on the stage "Load Test" and select the step called "Step Run Load Testing", the link to the result on the Azure Portal is displayed.
+4.  On the result pipeline page, if you click on the stage "Load Test" and select the step called "Step Run Load Testing", the link to the result on the Azure Portal is displayed.
 
     ![azure-devops-pipeline-14](./docs/img/azure-devops-pipeline-14.png)
 
-15. If you click on this link the results will be displayed.
+5.  If you click on this link the results will be displayed.
 
     On this page, you can see the requests/sec and the response time for the requests towards:
 
@@ -866,31 +869,31 @@ Enter the number threads for the load testing.
 
     In order to get an access to Azure Load Testing, you need to add your account as a "Load Test Contributor" on this Azure Load Testing resource.
 
-16. With the Azure Portal, select the resource group called "ldtest[APP_PREFIX]rg", in this resource group select the Azure Load Testing resource called "ldtest[APP_PREFIX]".
+6.  With the Azure Portal, select the resource group called "ldtest[APP_PREFIX]rg", in this resource group select the Azure Load Testing resource called "ldtest[APP_PREFIX]".
 
     ![azure-devops-pipeline-17](./docs/img/azure-devops-pipeline-17.png)
 
-17. Select the link "Access control (IAM)"
+7.  Select the link "Access control (IAM)"
 
     ![azure-devops-pipeline-18](./docs/img/azure-devops-pipeline-18.png)
 
-18. Click on the button "+ Add" and then on the popup menu "Add role assignment" 
+8.  Click on the button "+ Add" and then on the popup menu "Add role assignment" 
 
     ![azure-devops-pipeline-19](./docs/img/azure-devops-pipeline-19.png)
 
-19. On the next page, select role "Load Test Contributor"
+9.  On the next page, select role "Load Test Contributor"
 
     ![azure-devops-pipeline-20](./docs/img/azure-devops-pipeline-20.png)
 
-20. Click on the button "Next", and then "+ Select members" to select your account.
+10. Click on the button "Next", and then "+ Select members" to select your account.
 
     ![azure-devops-pipeline-21](./docs/img/azure-devops-pipeline-21.png)
 
-21. Select your account on the "Select members" box and click on the button "Select"
+11. Select your account on the "Select members" box and click on the button "Select"
 
     ![azure-devops-pipeline-22](./docs/img/azure-devops-pipeline-22.png)
 
-22. Click on the button "Review and Assign" twice, your account has now access to the Azure Load Testing resource.
+12. Click on the button "Review and Assign" twice, your account has now access to the Azure Load Testing resource.
 
     ![azure-devops-pipeline-23](./docs/img/azure-devops-pipeline-23.png)
 
@@ -911,7 +914,11 @@ The name of this new pipeline can be "eventhub-load-testing-pipeline".
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
 Enter the duration of the test in seconds.
-Enter the number threads for the load testing.
+Enter the number of threads for the load testing.  
+Enter the number of engine instances for the load testing.  
+Enter the error percentage threshold for the load testing.  
+Enter the average response time in milliseonds threshold for the load testing.  
+
 Then click on the button "Run"
 
 ![azure-devops-pipeline-eventhub-02](./docs/img/azure-devops-pipeline-eventhub-02.png)
@@ -943,7 +950,10 @@ The name of this new pipeline can be "eventhub-asa-load-testing-pipeline".
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
 Enter the duration of the test in seconds.
-Enter the number threads for the load testing.
+Enter the number of threads for the load testing.  
+Enter the number of engine instances for the load testing.  
+Enter the error percentage threshold for the load testing.  
+Enter the average response time in milliseonds threshold for the load testing.  
 Then click on the button "Run"
 
 ![azure-devops-pipeline-eventhub-asa-02](./docs/img/azure-devops-pipeline-eventhub-02.png)
@@ -999,7 +1009,10 @@ The name of this new pipeline can be "eventhub-firewall-load-testing-pipeline".
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
 Enter the duration of the test in seconds.
-Enter the number threads for the load testing.
+Enter the number of threads for the load testing.  
+Enter the number of engine instances for the load testing.  
+Enter the error percentage threshold for the load testing.  
+Enter the average response time in milliseonds threshold for the load testing.  
 Then click on the button "Run"
 
 ![azure-devops-pipeline-eventhub-02](./docs/img/azure-devops-pipeline-eventhub-02.png)
@@ -1097,6 +1110,10 @@ In order to activate this pipeline, follow the steps below:
    - Azure Eventhub Sku: Standard by default
    - Load Testing duration: 60 seconds by default
    - Load Testing number of threads: 1 by default
+   - Load Testing number of engine instances: 1 by default  
+   - Load Testing error percentage threshold: 5% by default  
+   - Load Testing average response time in milliseonds threshold: 100 ms by default  
+
    - Azure Region: 'eastus2' by default
    - Application prefix: visit1212 by default
 
@@ -1129,6 +1146,9 @@ In order to activate this pipeline, follow the steps below:
    - Azure Eventhub Sku: Standard by default
    - Load Testing duration: 60 seconds by default
    - Load Testing number of threads: 1 by default
+   - Load Testing number of engine instances: 1 by default  
+   - Load Testing error percentage threshold: 5% by default  
+   - Load Testing average response time in milliseonds threshold: 100 ms by default  
    - Azure Region: 'eastus2' by default
    - Application prefix: visit1212 by default
 
@@ -1161,6 +1181,9 @@ In order to activate this pipeline, follow the steps below:
    - Azure Eventhub Sku: Standard by default
    - Load Testing duration: 60 seconds by default
    - Load Testing number of threads: 1 by default
+   - Load Testing number of engine instances: 1 by default  
+   - Load Testing error percentage threshold: 5% by default  
+   - Load Testing average response time in milliseonds threshold: 100 ms by default  
    - Azure Region: 'eastus2' by default
    - Application prefix: visit1212 by default
 
@@ -1179,7 +1202,7 @@ The variable AZURE_APP_ID contains the AppId of the Azure Active Directory appli
 
   ![Troubleshooting-1](./docs/img/troubleshooting-web-app-01.png)
 
-Usually this step fails if the service principal associated with the pipeline doesn't have enough privilege to create an Application. 
+Usually this step fails if the service principal associated with the pipeline doesn't have enough privilege to create an Application.  
 
 A possible turn around consists in creating manually the Application from the Dev Container with the bash file iactool.sh.
 
@@ -1242,16 +1265,23 @@ which will update the redirect uri for the application.
 
 ## Under the hood
 
-### Defining load testing criteria
+### Defining load testing parameters
 
-Currently you can create 4 pipelines using the YAML files below:
+Currently you can create 4 Azure DevOps pipelines using the YAML files below:
 
 Web App Load Testing pipeline: [azure-pipelines-load-testing-web-app.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-web-app.yml)
 EventHubs Load Testing pipeline:[azure-pipelines-load-testing-eventhub.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub.yml)
 EventHubs Stream Analytics Load Testing pipeline:[azure-pipelines-load-testing-eventhub-asa.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-asa.yml)
 EventHubs with no public access Load Testing pipeline:[azure-pipelines-load-testing-eventhub-firewall.yml](./devops-pipelines/azure-pipelines/azure-pipelines-load-testing-eventhub-firewall.yml)
 
-Associated with each pipeline there are:
+You can create 4 Github Actions using the YAML files below:
+
+Web App Load Testing github action: [github-action-load-testing-web-app.yml](./devops-pipelines/github-action/github-action-load-testing-web-app.yml)
+EventHubs Load Testing github action:[github-action-load-testing-eventhub.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub.yml)
+EventHubs Stream Analytics Load Testing github action:[github-action-load-testing-eventhub-asa.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml)
+EventHubs with no public access Load Testing github action:[github-action-load-testing-eventhub-firewall.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml)
+
+Associated with each pipeline or github action there are:
 
 - a YAML file which defines the Azure Load Testing configuration.
 - a JMX file which contains the JMeter project in XML format.
@@ -1271,16 +1301,54 @@ EventHubs Stream Analytics Load Testing JMX file:[load-testing-eventhub-asa.jmx]
 EventHubs with no public access Load Testing configuration file:[load-testing-eventhub-firewall.yml](./devops-pipelines/load-testing/load-testing-eventhub-firewall.yml)
 EventHubs with no public access Load Testing JMX file:[load-testing-eventhub.jmx](./devops-pipelines/load-testing/load-testing-eventhub.jmx) (same JMX file as the one for EventHubs)
 
-For each load testing you can define failure criteria in the configuration file. You can define triggers which will generate error and stop the pipeline.
-For instance, if the average response time is over 100 ms or if the error percentage is over 20% a error will be generated
+For each load testing you can define:
+- the number of engine instances to use,  
+- the average respone time in ms threashold which will trigger an error and stop the pipeline, if the average response time is over this threshold,  
+- the error percentage threshold which will trigger an error and stop the pipeline, if the error percentage is over this threshold,,  
+
+For instance, if the average response time is over 100 ms or if the error percentage is over 20% a error will be generated.
+
+In the different Load Testing configuration files there are variables:
+- {engineInstances}
+- {responseTimeMs}
+- {errorPercentage}
 
 ```yml
+        engineInstances: {engineInstances}
+        
         failureCriteria: 
-        - avg(response_time_ms) > 100
-        - percentage(error) > 20
+        - avg(response_time_ms) > {responseTimeMs}
+        - percentage(error) > {errorPercentage}
 ```
 
-For the EventHubs with no public access load testing, you need to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The line below has been added into the EventHubs with no public access Load Testing configuration file. The pipeline or the github action will automatically replace {subnetId} with the value of the subnetId.
+The pipeline or the github action will automatically replace those variables with their respective pipeline or github action input variables.
+For instance, below the Azure DevOps step which will update the Load Testing configuration file: 
+
+```yml
+    - task: AzureCLI@2
+      displayName: 'Step configure and display Load Testing Configuration for Eventhub with firewall'
+      name: test
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "Duration: ${{ parameters.duration }}"
+          echo "Threads: ${{ parameters.threads }}"          
+          echo "Engine Instances: ${{ parameters.engineInstances }}"          
+          echo "Error Percentage: ${{ parameters.errorPercentage }}"          
+          echo "Response TimeMs: ${{ parameters.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          echo "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml content:"
+          cat "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+```
+
+
+For the EventHubs with no public access load testing, you need also to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The line below has been added into the EventHubs with no public access Load Testing configuration file. The pipeline or the github action will automatically replace {subnetId} with the value of the subnetId.
 
 ```yml
         subnetId:  {subnetId}
@@ -1342,7 +1410,7 @@ For instance, below the step in [azure-pipelines-load-testing-eventhub-firewall.
               fi
               sleep 30
             fi
-          fi  
+          fi   
 ```
 
 For instance, below the step in [github-action-load-testing-eventhub-firewall.yml](./devops-pipelines/github-action-/github-action-load-testing-eventhub-firewall.yml) which:
@@ -1359,47 +1427,29 @@ For instance, below the step in [github-action-load-testing-eventhub-firewall.ym
           AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
           AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
 
-          echo ${{ steps.deployloadtesting.outputs.publicIPAddress }}
+          echo "IP Address: ${{ steps.deployloadtesting.outputs.publicIPAddress }}"
           LOAD_TESTING_IP_ADDRESS=${{ steps.deployloadtesting.outputs.publicIPAddress }}
           echo "::set-output name=LOAD_TESTING_IP_ADDRESS::${LOAD_TESTING_IP_ADDRESS}"
 
 
-          echo ${{ steps.deployloadtesting.outputs.subnetId }}
+          echo "SubnetId: ${{ steps.deployloadtesting.outputs.subnetId }}"
           LOAD_TESTING_SUBNET_ID=${{ steps.deployloadtesting.outputs.subnetId }}
           echo "::set-output name=LOAD_TESTING_SUBNET_ID::${LOAD_TESTING_SUBNET_ID}"
-
           # Update Load Testing configuration file to update the subnetId
           sed -i "s/{subnetId}/\"${LOAD_TESTING_SUBNET_ID////\\/}\"/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-          cat "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-
 
           if [[ -n ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} ]]; then
             echo "Check if '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace exists"
             if [[ -n $(az eventhubs namespace show --name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} --resource-group "${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}" 2>/dev/null| jq -r .id) ]]; then
-              echo "Open '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace firewall to '$(LOAD_TESTING_IP_ADDRESS)'"
-              if [[ -n $(LOAD_TESTING_IP_ADDRESS) ]]; then
-                echo "Adding ip address $(LOAD_TESTING_IP_ADDRESS)"
-                echo "az eventhubs namespace network-rule add --ip-address $(LOAD_TESTING_IP_ADDRESS) --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} "
-                az eventhubs namespace network-rule add --ip-address $(LOAD_TESTING_IP_ADDRESS) --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}  >/dev/null
+              echo "Open '${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }}' Eventhubs namespace firewall to '${LOAD_TESTING_IP_ADDRESS}'"
+              if [[ -n ${LOAD_TESTING_IP_ADDRESS} ]]; then
+                echo "Adding ip address ${LOAD_TESTING_IP_ADDRESS}"
+                echo "az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_IP_ADDRESS} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }} "
+                az eventhubs namespace network-rule add --ip-address ${LOAD_TESTING_IP_ADDRESS} --namespace-name ${{ needs.stage-deploy-infrastructure.outputs.EVENTHUB_NAME_SPACE }} -g ${{ needs.stage-deploy-infrastructure.outputs.RESOURCE_GROUP }}  >/dev/null
               fi
               sleep 30
             fi
-          fi  
-```
-
-At least, currently in this repository all the Load testing configuration files will use only one engine instance. If you need more engine instances, change the value 'engineInstances' in the configuration file.
-
-```yml
-        version: v0.1
-        testName: load-testing-web-app-test
-        testPlan: load-testing-web-app.jmx
-        description: 'load-testing-web-app Test Run'
-        engineInstances: 1
-
-        failureCriteria: 
-            - avg(response_time_ms) > 100
-            - percentage(error) > 5
-
+          fi    
 ```
 
 ### JMX files

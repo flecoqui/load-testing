@@ -2,8 +2,9 @@ version: v0.1
 testName: load-testing-web-app-auth-test
 testPlan: load-testing-web-app-auth.jmx
 description: 'load-testing-web-app-auth Test Run'
-engineInstances: 1
+engineInstances: {engineInstances}
 
 failureCriteria: 
-    - avg(response_time_ms) > 100
-    - percentage(error) > 5
+    - avg(response_time_ms) > {responseTimeMs}
+    - percentage(error) > {errorPercentage}
+

@@ -54,8 +54,22 @@ parameters:
     displayName: Azure Load Testing number of threads
     type: number
     default: 1
+  - name: engineInstances
+    displayName: Azure Load Testing number of Engine Instances
+    type: number
+    default: 1
+  - name: errorPercentage
+    displayName: Azure Load Testing success criteria Error Percentage threshold 
+    type: number
+    default: 5
+  - name: responseTimeMs
+    displayName: Azure Load Testing success criteria average response time in ms threshold 
+    type: number
+    default: 100  
 
 variables:
+  - name: skipComponentGovernanceDetection
+    value: true
   - name: configurationFile
     value:  './configuration/.default.env'
   - group: load-testing-vg
@@ -354,8 +368,9 @@ stages:
           fi
 
     - task: AzureCLI@2
-      displayName: 'Step Display Load Testing parameters'
-      name: test
+      displayName: 'Step configure and display Load Testing Configuration for Web App with Authentication'
+      condition: eq('${{ parameters.azureADAuthenticationDisabled }}', 'False')         
+      name: configuretestwebappauth
       inputs:
         azureSubscription: $(SERVICE_CONNECTION)
         scriptType: "bash"
@@ -368,6 +383,41 @@ stages:
           echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
           echo "Duration: ${{ parameters.duration }}"
           echo "Threads: ${{ parameters.threads }}"          
+          echo "Engine Instances: ${{ parameters.engineInstances }}"          
+          echo "Error Percentage: ${{ parameters.errorPercentage }}"          
+          echo "Response TimeMs: ${{ parameters.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/${{ parameters.engineInstances }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          sed -i "s/{errorPercentage}/${{ parameters.errorPercentage }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          sed -i "s/{responseTimeMs}/${{ parameters.responseTimeMs }}/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+          echo "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml content:"
+          cat "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app-auth.yaml"
+
+    - task: AzureCLI@2
+      displayName: 'Step configure and display Load Testing Configuration for Web App without Authentication'
+      condition: eq('${{ parameters.azureADAuthenticationDisabled }}', 'True')         
+      name: configuretestwebapp
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo "AZURE_APP_ID: $(AZURE_APP_ID)"
+          echo "AZURE_AD_TOKEN: $(AZURE_AD_TOKEN)"  
+          echo "WEB_APP_DOMAIN: $(WEB_APP_DOMAIN)"
+          echo "FUNCTION_DOMAIN: $(FUNCTION_DOMAIN)"
+          echo "Duration: ${{ parameters.duration }}"
+          echo "Threads: ${{ parameters.threads }}"          
+          echo "Engine Instances: ${{ parameters.engineInstances }}"          
+          echo "Error Percentage: ${{ parameters.errorPercentage }}"          
+          echo "Response TimeMs: ${{ parameters.responseTimeMs }}"  
+          # Update Load Testing configuration file
+          sed -i "s/{engineInstances}/\"${{ parameters.engineInstances }}\"/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml"
+          sed -i "s/{errorPercentage}/\"${{ parameters.errorPercentage }}\"/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml"
+          sed -i "s/{responseTimeMs}/\"${{ parameters.responseTimeMs }}\"/g" "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml"
+          echo "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml content:"
+          cat "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/load-testing-web-app.yaml"
 
     - task: AzureResourceManagerTemplateDeployment@3
       displayName: 'Step Deploy Load Testing ${{ parameters.deploymentType }}'      
