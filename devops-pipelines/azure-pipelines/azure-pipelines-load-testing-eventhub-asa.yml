@@ -235,11 +235,118 @@ stages:
             exit 1
           fi
 
+- stage: StageLatencyMeasurement
+  displayName: Latency Measurement
+  dependsOn: 
+  - StagePrepareEventHub
+  - StageDeployInfrastructure   
+  variables:
+    EVENTHUB_NAME_SPACE: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_NAME_SPACE'] ]      
+    EVENTHUB_INPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_NAME'] ]
+    EVENTHUB_INPUT_2_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_2_NAME'] ]
+    EVENTHUB_OUTPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_OUTPUT_1_NAME'] ]
+    EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME'] ]
+    EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME'] ]
+    EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME'] ]
+    STORAGE_ACCOUNT_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STORAGE_ACCOUNT_NAME'] ]
+    APP_INSIGHTS_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.APP_INSIGHTS_NAME'] ]
+    RESOURCE_GROUP: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
+    STREAM_ANALYTICS_JOB_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STREAM_ANALYTICS_JOB_NAME'] ]
+
+  condition: succeeded()
+  jobs:
+  - job: JobLatency
+    displayName: Job Latency
+    steps:
+    
+    - task: AzureCLI@2
+      displayName: 'Step Azure Authentication'  
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: "bash"
+        addSpnToEnvironment: "true"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
+          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
+          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID" 
+          echo "##vso[task.setvariable variable=AZURE_TENANT_ID]$AZURE_TENANT_ID" 
+          echo "Service Principal Id: $servicePrincipalId"
+          echo "Service Principal Key: $servicePrincipalKey"
+          echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"          
+          echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"  
+          echo "Azure Infrastructure to test: ${{ variables.deploymentType }}"
+
+          echo "EVENTHUB_NAME_SPACE: $(EVENTHUB_NAME_SPACE)"
+          echo "EVENTHUB_INPUT_1_NAME: $(EVENTHUB_INPUT_1_NAME)"
+          echo "EVENTHUB_INPUT_2_NAME: $(EVENTHUB_INPUT_2_NAME)"
+          echo "EVENTHUB_OUTPUT_1_NAME: $(EVENTHUB_OUTPUT_1_NAME)"
+          echo "EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: $(EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME)"
+          echo "EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: $(EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME)"
+          echo "EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: $(EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME)"
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.8' 
+        addToPath: true 
+        architecture: 'x64'
+
+    - script:
+        pip install -r "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/requirements.txt"
+      displayName: 'SETUP: Install latency measurement dependencies'
+
+    - task: AzureCLI@2
+      displayName: "STEP: Measure Latency during ${{ parameters.duration }} seconds"
+      inputs:
+        azureSubscription: $(SERVICE_CONNECTION)
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency"
+        inlineScript: |
+          # Get the eventhubs connection string
+          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group $(RESOURCE_GROUP) --namespace-name $(EVENTHUB_NAME_SPACE) --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
+          echo "connectionStr: $connectionStr"
+          # Create directory to receive results
+          if [ ! -d ./latencyresults ]; then
+            mkdir ./latencyresults        
+          fi     
+
+          cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
+            --eventhubs-connection-string \"$connectionStr\" \
+            --input-csv-input-1 ./data/events1.csv \
+            --eventhub-input-1-name \"$(EVENTHUB_INPUT_1_NAME)\" \
+            --input-csv-input-2 ./data/events2.csv \
+            --eventhub-input-2-name \"$(EVENTHUB_INPUT_2_NAME)\" \
+            --eventhub-output-1-name \"$(EVENTHUB_OUTPUT_1_NAME)\" \
+            --eventhub-output-1-consumer-group \"$(EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME)\" \
+            --receiving-duration-max-seconds ${{ parameters.duration }} \
+            --no-transmission-duration-seconds 5 \
+            --junit-result-file ./latencyresults/output.xml \
+            --asyncio-mode=strict \
+            measure_latency.py"
+          
+          echo "$cmd"
+          eval "$cmd"
+
+
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults/output.xml'
+        failTaskOnFailedTests: false
+      displayName: 'STEP: Publish Latency Results'
+
+    - publish: $(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults
+      displayName: 'Step Publish Load Testing Results for deployment ${{ variables.deploymentType }} in $(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults'
+      artifact: LatencyResults-${{ variables.deploymentType }}
+      condition: succeededOrFailed()
+
 - stage: StageLatencyMeasurementDuringLoadTest
   displayName: Latency Measurement during Load Test
   dependsOn: 
   - StagePrepareEventHub
   - StageDeployInfrastructure 
+  - StageLatencyMeasurement
   variables:
     EVENTHUB_NAME_SPACE: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_NAME_SPACE'] ]      
     EVENTHUB_INPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_NAME'] ]
@@ -346,6 +453,7 @@ stages:
   dependsOn: 
   - StagePrepareEventHub
   - StageDeployInfrastructure 
+  - StageLatencyMeasurement
   variables:
     EVENTHUB_NAME_SPACE: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_NAME_SPACE'] ]      
     EVENTHUB_INPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_NAME'] ]
@@ -482,119 +590,14 @@ stages:
       displayName: 'Step Publish Load Testing Results for deployment ${{ variables.deploymentType }} in $(System.DefaultWorkingDirectory)/loadTest'
       artifact: results
 
-- stage: StageLatencyMeasurement
-  displayName: Latency Measurement
-  dependsOn: 
-  - StageDeployInfrastructure
-  - StageLoadTest
-  - StageLatencyMeasurementDuringLoadTest   
-  variables:
-    EVENTHUB_NAME_SPACE: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_NAME_SPACE'] ]      
-    EVENTHUB_INPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_NAME'] ]
-    EVENTHUB_INPUT_2_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_2_NAME'] ]
-    EVENTHUB_OUTPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_OUTPUT_1_NAME'] ]
-    EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME'] ]
-    EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME'] ]
-    EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME'] ]
-    STORAGE_ACCOUNT_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STORAGE_ACCOUNT_NAME'] ]
-    APP_INSIGHTS_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.APP_INSIGHTS_NAME'] ]
-    RESOURCE_GROUP: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.RESOURCE_GROUP'] ]
-    STREAM_ANALYTICS_JOB_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.STREAM_ANALYTICS_JOB_NAME'] ]
-
-  condition: succeeded()
-  jobs:
-  - job: JobLatency
-    displayName: Job Latency
-    steps:
-    
-    - task: AzureCLI@2
-      displayName: 'Step Azure Authentication'  
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        scriptType: "bash"
-        addSpnToEnvironment: "true"
-        scriptLocation: "inlineScript"
-        inlineScript: |
-          AZURE_SUBSCRIPTION_ID=$(az account show --query 'id' --output tsv)
-          AZURE_TENANT_ID=$(az account show --query 'tenantId' --output tsv)
-          echo "##vso[task.setvariable variable=AZURE_SUBSCRIPTION_ID]$AZURE_SUBSCRIPTION_ID" 
-          echo "##vso[task.setvariable variable=AZURE_TENANT_ID]$AZURE_TENANT_ID" 
-          echo "Service Principal Id: $servicePrincipalId"
-          echo "Service Principal Key: $servicePrincipalKey"
-          echo "AZURE_SUBSCRIPTION_ID: $AZURE_SUBSCRIPTION_ID"          
-          echo "AZURE_TENANT_ID: $AZURE_TENANT_ID"  
-          echo "Azure Infrastructure to test: ${{ variables.deploymentType }}"
-
-          echo "EVENTHUB_NAME_SPACE: $(EVENTHUB_NAME_SPACE)"
-          echo "EVENTHUB_INPUT_1_NAME: $(EVENTHUB_INPUT_1_NAME)"
-          echo "EVENTHUB_INPUT_2_NAME: $(EVENTHUB_INPUT_2_NAME)"
-          echo "EVENTHUB_OUTPUT_1_NAME: $(EVENTHUB_OUTPUT_1_NAME)"
-          echo "EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME: $(EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME)"
-          echo "EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME: $(EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME)"
-          echo "EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME: $(EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME)"
-
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '3.8' 
-        addToPath: true 
-        architecture: 'x64'
-
-    - script:
-        pip install -r "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/requirements.txt"
-      displayName: 'SETUP: Install latency measurement dependencies'
-
-    - task: AzureCLI@2
-      displayName: "STEP: Measure Latency during ${{ parameters.duration }} seconds"
-      inputs:
-        azureSubscription: $(SERVICE_CONNECTION)
-        scriptType: bash
-        scriptLocation: inlineScript
-        workingDirectory: "$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency"
-        inlineScript: |
-          # Get the eventhubs connection string
-          connectionStr=$(az eventhubs namespace authorization-rule keys list --resource-group $(RESOURCE_GROUP) --namespace-name $(EVENTHUB_NAME_SPACE) --name RootManageSharedAccessKey --query 'primaryConnectionString' -o tsv)
-          echo "connectionStr: $connectionStr"
-          # Create directory to receive results
-          if [ ! -d ./latencyresults ]; then
-            mkdir ./latencyresults        
-          fi     
-
-          cmd="pytest -q -s --junitxml=junit/test-results.xml --disable-pytest-warnings \
-            --eventhubs-connection-string \"$connectionStr\" \
-            --input-csv-input-1 ./data/events1.csv \
-            --eventhub-input-1-name \"$(EVENTHUB_INPUT_1_NAME)\" \
-            --input-csv-input-2 ./data/events2.csv \
-            --eventhub-input-2-name \"$(EVENTHUB_INPUT_2_NAME)\" \
-            --eventhub-output-1-name \"$(EVENTHUB_OUTPUT_1_NAME)\" \
-            --eventhub-output-1-consumer-group \"$(EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME)\" \
-            --receiving-duration-max-seconds ${{ parameters.duration }} \
-            --no-transmission-duration-seconds 5 \
-            --junit-result-file ./latencyresults/output.xml \
-            --asyncio-mode=strict \
-            measure_latency.py"
-          
-          echo "$cmd"
-          eval "$cmd"
-
-
-    - task: PublishTestResults@2
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults/output.xml'
-        failTaskOnFailedTests: false
-      displayName: 'STEP: Publish Latency Results'
-
-    - publish: $(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults
-      displayName: 'Step Publish Load Testing Results for deployment ${{ variables.deploymentType }} in $(System.DefaultWorkingDirectory)/devops-pipelines/load-testing/latency/latencyresults'
-      artifact: LatencyResults-${{ variables.deploymentType }}
-      condition: succeededOrFailed()
-
 
 - stage: StageStopASAJob
   displayName: Stop ASA Job
   dependsOn: 
   - StageDeployInfrastructure
-  - StageLatencyMeasurement   
+  - StageLatencyMeasurement  
+  - StageLoadTest
+  - StageLatencyMeasurementDuringLoadTest 
   variables:
     EVENTHUB_NAME_SPACE: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_NAME_SPACE'] ]      
     EVENTHUB_INPUT_1_NAME: $[ stageDependencies.StageDeployInfrastructure.JobDeployInfrastructure.outputs['StepDeployInfrastructure.EVENTHUB_INPUT_1_NAME'] ]

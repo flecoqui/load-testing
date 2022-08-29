@@ -825,11 +825,11 @@ In order to create this pipeline, follow the steps below:
 Check or not the box "Azure AD Authentication Disabled" to support Azure AD Authentication.  
 Select the Web App infrastructure you wants to deploy: 'web-storage-api-storage', 'web-app-api-storage', 'web-app-api-cosmosdb'.  
 Select the App Service Plan sku.  
-Enter the duration of the test in seconds.  
-Enter the number of threads for the load testing.  
-Enter the number of engine instances for the load testing.  
-Enter the error percentage threshold for the load testing.  
-Enter the average response time in milliseonds threshold for the load testing.  
+Enter the duration of the test in seconds (60 seconds by default) 
+Enter the number of threads for the load testing (1 by default).  
+Enter the number of engine instances for the load testing (1 by default).  
+Enter the error percentage threshold for the load testing (5 by default).  
+Enter the average response time in milliseonds threshold for the load testing (100 by default).  
 
     ![azure-devops-pipeline-09](./docs/img/azure-devops-pipeline-09.png)
 
@@ -913,11 +913,12 @@ The name of this new pipeline can be "eventhub-load-testing-pipeline".
 
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
-Enter the duration of the test in seconds.
-Enter the number of threads for the load testing.  
-Enter the number of engine instances for the load testing.  
-Enter the error percentage threshold for the load testing.  
-Enter the average response time in milliseonds threshold for the load testing.  
+Enter the duration of the test in seconds (60 seconds by default). 
+Enter the number of threads for the load testing (1 by default).  
+Enter the number of engine instances for the load testing (1 by default).  
+Enter the error percentage threshold for the load testing (5 by default).  
+Enter the average response time in milliseonds threshold for the load testing (100 by default).  
+  
 
 Then click on the button "Run"
 
@@ -949,11 +950,12 @@ The name of this new pipeline can be "eventhub-asa-load-testing-pipeline".
 
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
-Enter the duration of the test in seconds.
-Enter the number of threads for the load testing.  
-Enter the number of engine instances for the load testing.  
-Enter the error percentage threshold for the load testing.  
-Enter the average response time in milliseonds threshold for the load testing.  
+Enter the duration of the test in seconds (60 seconds by default) 
+Enter the number of threads for the load testing (1 by default).  
+Enter the number of engine instances for the load testing (1 by default).  
+Enter the error percentage threshold for the load testing (5 by default).  
+Enter the average response time in milliseonds threshold for the load testing (100 by default).  
+
 Then click on the button "Run"
 
 ![azure-devops-pipeline-eventhub-asa-02](./docs/img/azure-devops-pipeline-eventhub-02.png)
@@ -1008,11 +1010,12 @@ The name of this new pipeline can be "eventhub-firewall-load-testing-pipeline".
 
 To run the new pipeline, on the dialog box 'Run pipeline', select the 'main' branch.
 Select the EventHubs Sku "Basic", "Standard", "Premium" ("Standard" by default)  
-Enter the duration of the test in seconds.
-Enter the number of threads for the load testing.  
-Enter the number of engine instances for the load testing.  
-Enter the error percentage threshold for the load testing.  
-Enter the average response time in milliseonds threshold for the load testing.  
+Enter the duration of the test in seconds (60 seconds by default) 
+Enter the number of threads for the load testing (1 by default).  
+Enter the number of engine instances for the load testing (1 by default).  
+Enter the error percentage threshold for the load testing (5 by default).  
+Enter the average response time in milliseonds threshold for the load testing (100 by default).  
+
 Then click on the button "Run"
 
 ![azure-devops-pipeline-eventhub-02](./docs/img/azure-devops-pipeline-eventhub-02.png)
@@ -1075,12 +1078,15 @@ In order to activate this pipeline, follow the steps below:
    - Deployment Type: web-storage-api-storage by default
    - Azure Service Plan Sku: B2 by default
    - Load Testing duration: 60 seconds by default
-   - Load Testing number of threads: 1 by default
+   - Load Testing number of threads: 1 by default  
+   - Load Testing number of engine instances: 1 by default  
+   - Load Testing error percentage threshold: 5 by default  
+   - Load Testing average response time in milliseonds threshold: 100 by default  
    - Azure Region: 'eastus2' by default
    - Application prefix: visit1212 by default
-   - Application Id: '' by default, you can enter the appId of an application created manually with iactool.sh.  
-   - Azure AD Token: '' by default, you can enter the Azure AD Token created or captured manually.
-
+  
+  As Github Action only supports maximum 10 inputs 'Application Id' and 'Azure AD Token' are set ''.
+  
     ![github-action-web-app-start](./docs/img/github-action-web-app-start.png)
 
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.
@@ -1187,7 +1193,7 @@ In order to activate this pipeline, follow the steps below:
    - Azure Region: 'eastus2' by default
    - Application prefix: visit1212 by default
 
-   ![github-action-eventhub-start](./docs/img/github-action-eventhub-start.png)
+   ![github-action-eventhub-start](./docs/img/github-action-eventhub-firewall-start.png)
 
 5. After few minutes, the pipeline has been completed and you can download the load testing artifacts.
 
@@ -1692,6 +1698,5 @@ This project welcomes contributions and suggestions. Further information about c
 
 Below a list of possible improvements:  
 
-1. Add the number of engine instances, the response time in ms and the error percentage in the pipeline input parameters
-2. Add Unit tests for Web UI
-3. Add Unit tests for Web API
+1. Add Unit tests for Web UI
+2. Add Unit tests for Web API

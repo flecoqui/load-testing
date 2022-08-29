@@ -1006,8 +1006,13 @@ footer p {
 .mini-table-header{
   background-color: var(--mini-button-bg-color);
   color: var(--mini-button-text-color)
-
 }
+table.table tr th {
+  background-color:var(--mini-button-bg-color) !important; 
+  color:var(--mini-button-text-color) !important;
+}
+
+
 /*
 .table-fixed tbody {
   display:block;

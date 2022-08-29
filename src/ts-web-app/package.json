@@ -8,24 +8,24 @@
     "serve": "http-server build"
   },
   "dependencies": {
-    "@azure/identity": "^2.0.1",
-    "@azure/msal-browser": "^2.22.0",
-    "@azure/storage-blob": "^12.8.0",
-    "@microsoft/applicationinsights-web": "^2.8.0",
-    "bootstrap": "^4.6.1",
-    "bootstrap-table": "^1.19.1",
-    "copy-webpack-plugin": "^10.2.4",
-    "http-server": "^13.0.2",
+    "@azure/identity": "^2.1.0",
+    "@azure/msal-browser": "^2.28.1",
+    "@azure/storage-blob": "^12.11.0",
+    "@microsoft/applicationinsights-web": "^2.8.6",
+    "bootstrap": "^5.2.0",
+    "bootstrap-table": "^1.21.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "http-server": "^14.1.1",
     "jquery": "^3.6.0",
     "jquery-resizable-columns": "^0.2.3",
-    "@popperjs/core": "^2.11.5",
-    "ts-loader": "^9.3.0",
-    "typescript": "^4.6.4",
-    "webpack": "^5.72.1",
-    "webpack-cli": "^4.9.2"
+    "@popperjs/core": "^2.11.6",
+    "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
   },
   "devDependencies": {
-    "@types/bootstrap": "^4.6.1",
+    "@types/bootstrap": "^5.2.2",
     "@types/jquery": "^3.5.14"
   },
   "name": "ts-web-app",

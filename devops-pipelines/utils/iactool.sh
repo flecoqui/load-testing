@@ -386,31 +386,31 @@ if [[ "${action}" == "deployev" ]] ; then
         asaJobId=$(az stream-analytics job show --job-name ${STREAM_ANALYTICS_JOB_NAME} --resource-group ${RESOURCE_GROUP} -o json 2>/dev/null | jq -r .identity.principalId)
         if [[ -n $asaJobId ]]; then                
             printProgress "Checking role assignment 'Azure Event Hubs Data Receiver' between ASA '${STREAM_ANALYTICS_JOB_NAME}' and name space '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_1_NAME}'"
-            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${EVENTHUB_NAME_SPACE}"/eventhubs/"${EVENTHUB_INPUT_1_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Receiver") | length')
+            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_INPUT_1_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Receiver") | length')
             if [ "$asaJobMsiRoleAssignmentCount" != "1" ];
             then
                 printProgress  "Assigning 'Azure Event Hubs Data Receiver' role assignment to  ASAJob '${STREAM_ANALYTICS_JOB_NAME}' on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_1_NAME}'..."
-                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_1_NAME}\" --role \"Azure Event Hubs Data Receiver\"  2>/dev/null"
+                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_INPUT_1_NAME}\" --role \"Azure Event Hubs Data Receiver\"  2>/dev/null"
                 printProgress "$cmd"
                 eval "$cmd"
             fi
             
             printProgress "Checking role assignment 'Azure Event Hubs Data Receiver' between ASA '${STREAM_ANALYTICS_JOB_NAME}' and name space '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_2_NAME}'"
-            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${EVENTHUB_NAME_SPACE}"/eventhubs/"${EVENTHUB_INPUT_2_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Receiver") | length')
+            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_INPUT_2_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Receiver") | length')
             if [ "$asaJobMsiRoleAssignmentCount" != "1" ];
             then
                 printProgress  "Assigning 'Azure Event Hubs Data Receiver' role assignment to  ASAJob '${STREAM_ANALYTICS_JOB_NAME}' on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_INPUT_2_NAME}'..."
-                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_INPUT_2_NAME}\" --role \"Azure Event Hubs Data Receiver\"  2>/dev/null"
+                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_INPUT_2_NAME}\" --role \"Azure Event Hubs Data Receiver\"  2>/dev/null"
                 printProgress "$cmd"
                 eval "$cmd"
             fi
 
             printProgress "Checking role assignment 'Azure Event Hubs Data Sender' between ASA '${STREAM_ANALYTICS_JOB_NAME}' and name space '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_OUTPUT_1_NAME}'"
-            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope /subscriptions/"${AZURE_SUBSCRIPTION_ID}"/resourceGroups/"${RESOURCE_GROUP}"/providers/Microsoft.EventHub/namespaces/"${EVENTHUB_NAME_SPACE}"/eventhubs/"${EVENTHUB_OUTPUT_1_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Sender") | length')
+            asaJobMsiRoleAssignmentCount=$(az role assignment list --assignee "${asaJobId}" --scope "/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_OUTPUT_1_NAME}"  2>/dev/null | jq -r 'select(.[].roleDefinitionName=="Azure Event Hubs Data Sender") | length')
             if [ "$asaJobMsiRoleAssignmentCount" != "1" ];
             then
                 printProgress  "Assigning 'Azure Event Hubs Data Receiver' role assignment to  ASAJob '${STREAM_ANALYTICS_JOB_NAME}' on scope '${EVENTHUB_NAME_SPACE}' '${EVENTHUB_OUTPUT_1_NAME}'..."
-                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope /subscriptions/\"${AZURE_SUBSCRIPTION_ID}\"/resourceGroups/\"${RESOURCE_GROUP}\"/providers/Microsoft.EventHub/namespaces/\"${EVENTHUB_NAME_SPACE}\"/eventhubs/\"${EVENTHUB_OUTPUT_1_NAME}\" --role \"Azure Event Hubs Data Sender\"  2>/dev/null"
+                cmd="az role assignment create --assignee-object-id \"$asaJobId\" --assignee-principal-type ServicePrincipal --scope \"/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.EventHub/namespaces/${EVENTHUB_NAME_SPACE}/eventhubs/${EVENTHUB_OUTPUT_1_NAME}\" --role \"Azure Event Hubs Data Sender\"  2>/dev/null"
                 printProgress "$cmd"
                 eval "$cmd"
             fi

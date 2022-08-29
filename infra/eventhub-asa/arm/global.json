@@ -139,7 +139,18 @@
               "30",
               "31"
             ]        
-          }    
+          },
+          "resources": [
+            {
+              "apiVersion": "2017-04-01",
+              "name": "[variables('eventHubInput1ConsumerGroup')]",
+              "type": "consumergroups",
+              "dependsOn": [ "[variables('eventHubInput1Name')]" ],
+              "properties": {
+                "userMetadata": "User Metadata goes here"
+              }
+            }
+          ]      
         },
         {
           "apiVersion": "2022-01-01-preview",
@@ -185,7 +196,18 @@
               "30",
               "31"
             ]        
-          }    
+          },
+          "resources": [
+            {
+              "apiVersion": "2017-04-01",
+              "name": "[variables('eventHubInput2ConsumerGroup')]",
+              "type": "consumergroups",
+              "dependsOn": [ "[variables('eventHubInput2Name')]" ],
+              "properties": {
+                "userMetadata": "User Metadata goes here"
+              }
+            }
+          ]        
         },        
         {
           "apiVersion": "2022-01-01-preview",
