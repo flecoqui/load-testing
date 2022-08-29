@@ -301,11 +301,11 @@ jobs:
           echo "ERROR PERCENTAGE: ${{ github.event.inputs.errorPercentage }}"          
           echo "RESPONSE TIME MS: ${{ github.event.inputs.responseTimeMs }}"  
           # Update Load Testing configuration file
-          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
-          echo "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml content:"
-          cat "./devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml"
+          sed -i "s/{engineInstances}/${{ github.event.inputs.engineInstances }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          sed -i "s/{errorPercentage}/${{ github.event.inputs.errorPercentage }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          sed -i "s/{responseTimeMs}/${{ github.event.inputs.responseTimeMs }}/g" "./devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
+          echo "./devops-pipelines/load-testing/load-testing-eventhub-asa.yaml content:"
+          cat "./devops-pipelines/load-testing/load-testing-eventhub-asa.yaml"
 
       - name: 'Step Run Load Testing Eventhub ASA'
         uses: azure/load-testing@v1
