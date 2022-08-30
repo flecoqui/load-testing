@@ -2,19 +2,19 @@ name: LoadTestingEventhubASA
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
-  push:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
-      - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
-      - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx   
+  # push:
+  #  branches: [ main ]
+  #  paths:
+  #    - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
+  #    - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
+  #    - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx   
    
-  pull_request:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
-      - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
-      - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml
+  #     - devops-pipelines/load-testing/load-testing-eventhub-asa.yaml
+  #     - devops-pipelines/load-testing/load-testing-eventhub-asa.jmx
 
   workflow_dispatch:
     inputs:
@@ -62,7 +62,7 @@ on:
       AZURE_APP_PREFIX:
         description: 'Application prefix used for naming'
         required: true
-        default: "visit1212"
+        default: "visit0000"
 
 env:
   CONFIGURATION_FILE: './configuration/.default.env'
