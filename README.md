@@ -354,6 +354,9 @@ For instance, the command below create the application for the 'web-storage-api-
 
 The appId associated with the new application will be used for subsequent steps which will build the Web UI and Web API.
 
+**Note**:
+The creation of the Application in Azure Active Directory requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Storage or an Azure App Service hosting the Web application. The creation of the Application in Azure Active Directory must be launched once the infrastructure is deployed. If you launch the creation of the Application in Azure Active Directory before deploying the infrastructure it will fail.
+
 ##### Building the backend
 
 The backend is a dotnet core Web API. This Web API will be built and a container containing the ASP.NET service will be stored on Azure Container Registry using iactool.sh and action 'buildbe'.
@@ -1083,7 +1086,7 @@ In order to activate this pipeline, follow the steps below:
    - Load Testing error percentage threshold: 5 by default  
    - Load Testing average response time in milliseonds threshold: 100 by default  
    - Azure Region: 'eastus2' by default
-   - Application prefix: visit1212 by default
+   - Application prefix: visit0000 by default. Don't hesitate to change this value to avoid conflict
   
   As Github Action only supports maximum 10 inputs 'Application Id' and 'Azure AD Token' are set ''.
   
@@ -1121,7 +1124,8 @@ In order to activate this pipeline, follow the steps below:
    - Load Testing average response time in milliseonds threshold: 100 ms by default  
 
    - Azure Region: 'eastus2' by default
-   - Application prefix: visit1212 by default
+   - Application prefix: visit0000 by default. Don't hesitate to change this value to avoid conflict
+  
 
    ![github-action-eventhub-start](./docs/img/github-action-eventhub-start.png)
 
@@ -1156,7 +1160,8 @@ In order to activate this pipeline, follow the steps below:
    - Load Testing error percentage threshold: 5% by default  
    - Load Testing average response time in milliseonds threshold: 100 ms by default  
    - Azure Region: 'eastus2' by default
-   - Application prefix: visit1212 by default
+   - Application prefix: visit0000 by default. Don't hesitate to change this value to avoid conflict
+  
 
    ![github-action-eventhub-asa-start](./docs/img/github-action-eventhub-asa-start.png)
 
@@ -1191,7 +1196,8 @@ In order to activate this pipeline, follow the steps below:
    - Load Testing error percentage threshold: 5% by default  
    - Load Testing average response time in milliseonds threshold: 100 ms by default  
    - Azure Region: 'eastus2' by default
-   - Application prefix: visit1212 by default
+   - Application prefix: visit0000 by default. Don't hesitate to change this value to avoid conflict
+  
 
    ![github-action-eventhub-start](./docs/img/github-action-eventhub-firewall-start.png)
 
@@ -1239,7 +1245,10 @@ A possible turn around consists in creating manually the Application from the De
 
     This command will create the Application and display the appId of the new application:
 
-    ![Troubleshooting-4](./docs/img/troubleshooting-web-app-04.png)
+    ![Troubleshooting-4](./docs/img/troubleshooting-web-app-04.png)µ
+
+    **Note**:
+    The creation of the Application in Azure Active Directory requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Storage or an Azure App Service hosting the Web application. The creation of the Application in Azure Active Directory must be launched once the infrastructure is deployed. If you launch the creation of the Application in Azure Active Directory before deploying the infrastructure it will fail.
 
 4. Copy the value of the appId in a new variable in the variable group called 'AZURE_APP_ID'
 

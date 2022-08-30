@@ -84,7 +84,7 @@ on:
       AZURE_APP_PREFIX:
         description: 'Application prefix used for naming'
         required: true
-        default: "visit1212"
+        default: "visit0000"
  # Limit the number of inputs to 10 to run the github action
  #     AZURE_APP_ID:
  #       description: 'Application Id of the application created outside of the pipeline'

@@ -62,7 +62,7 @@ on:
       AZURE_APP_PREFIX:
         description: 'Application prefix used for naming'
         required: true
-        default: "visit1212"
+        default: "visit0000"
 
 env:
   CONFIGURATION_FILE: './configuration/.default.env'

@@ -227,6 +227,7 @@ function deployAzureInfrastructure(){
             --resource-group $resourcegroup \
             --subscription $subscription \
             --template-file $template \
+            --output none \
             --parameters \
             name=$prefix sku=$sku"
     else
@@ -235,6 +236,7 @@ function deployAzureInfrastructure(){
             --resource-group $resourcegroup \
             --subscription $subscription \
             --template-file $template \
+            --output none \
             --parameters \
             name=$prefix sku=$sku ipAddress=\"$ip\""
     fi
@@ -252,56 +254,89 @@ function deployAzureInfrastructure(){
 function getDeploymentVariables(){
     resourcegroup="rg$1"
 
-    if [[ ! $# -ge 2 ]]; then
-        datadep=$(getDeploymentName "$AZURE_SUBSCRIPTION_ID" "$resourcegroup" 'storageAccountName')
-    else
-        if [ -z "$2" ]; then
+    response=$(az group exists --resource-group "$resourcegroup")
+    if [ "$response" == "true" ]; then
+        if [[ ! $# -ge 2 ]]; then
             datadep=$(getDeploymentName "$AZURE_SUBSCRIPTION_ID" "$resourcegroup" 'storageAccountName')
         else
-            datadep="$2"
+            if [ -z "$2" ]; then
+                datadep=$(getDeploymentName "$AZURE_SUBSCRIPTION_ID" "$resourcegroup" 'storageAccountName')
+            else
+                datadep="$2"
+            fi
         fi
+        printProgress "Getting variables from deployment Name: ${datadep} from resource group ${resourcegroup}"
+        # get ACR login server dns name
+        ACR_LOGIN_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.acrLoginServer.value')
+        # get WebApp Url
+        WEB_APP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppName.value')
+        WEB_APP_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppServer.value')
+        # get FUNCTION Url
+        FUNCTION_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.functionName.value')
+        FUNCTION_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.functionServer.value')
+        # get ACR Name
+        ACR_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.acrName.value')
+        # get WebApp Tenant ID
+        WEB_APP_TENANT_ID=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppTenantId.value')
+        # get WebApp Object ID
+        WEB_APP_OBJECT_ID=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppObjectId.value')
+        # get Storage Account
+        STORAGE_ACCOUNT_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountName.value')
+        STORAGE_ACCOUNT_TOKEN=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountToken.value')
+        STORAGE_ACCOUNT_INPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.inputContainerName.value')
+        STORAGE_ACCOUNT_OUTPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputContainerName.value')
+        # get Cosmos DB Information
+        COSMOS_DB_SERVICE_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBServiceName.value')
+        COSMOS_DB_SERVICE_KEY=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBServiceKey.value')
+        COSMOS_DB_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBName.value')
+
+        APP_INSIGHTS_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsName.value')
+        APP_INSIGHTS_CONNECTION_STRING=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsConnectionString.value')    
+        APP_INSIGHTS_INSTRUMENTATION_KEY=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsInstrumentationKey.value')    
+
+
+        EVENTHUB_NAME_SPACE=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.namespaceName.value')
+        EVENTHUB_INPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1Name.value')
+        EVENTHUB_INPUT_2_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2Name.value')
+        EVENTHUB_OUTPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1Name.value')
+        EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1ConsumerGroup.value')
+        EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1ConsumerGroup.value')
+        EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2ConsumerGroup.value')
+
+        STREAM_ANALYTICS_JOB_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.asaJob.value')
+
+        RESOURCE_GROUP=$resourcegroup
+    else
+        printProgress "Getting variables from deployment, Resource group ${resourcegroup} doesn't exist"
+        ACR_LOGIN_SERVER=""
+        WEB_APP_NAME=""
+        WEB_APP_SERVER=""
+        FUNCTION_NAME=""
+        FUNCTION_SERVER=""
+        ACR_NAME=""
+        WEB_APP_TENANT_ID=""
+        WEB_APP_OBJECT_ID=""
+        STORAGE_ACCOUNT_NAME=""
+        STORAGE_ACCOUNT_TOKEN=""
+        STORAGE_ACCOUNT_INPUT_CONTAINER=""
+        STORAGE_ACCOUNT_OUTPUT_CONTAINER=""
+        COSMOS_DB_SERVICE_NAME=""
+        COSMOS_DB_SERVICE_KEY=""
+        COSMOS_DB_NAME=""
+        APP_INSIGHTS_NAME=""
+        APP_INSIGHTS_CONNECTION_STRING=""
+        APP_INSIGHTS_INSTRUMENTATION_KEY=""
+        EVENTHUB_NAME_SPACE=""
+        EVENTHUB_INPUT_1_NAME=""
+        EVENTHUB_INPUT_2_NAME=""
+        EVENTHUB_OUTPUT_1_NAME=""
+        EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=""
+        EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=""
+        EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=""
+        STREAM_ANALYTICS_JOB_NAME=""
+
+        RESOURCE_GROUP=$resourcegroup
     fi
-    printProgress "Getting variables from deployment Name: ${datadep} from resource group ${resourcegroup}"
-    # get ACR login server dns name
-    ACR_LOGIN_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.acrLoginServer.value')
-    # get WebApp Url
-    WEB_APP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppName.value')
-    WEB_APP_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppServer.value')
-    # get FUNCTION Url
-    FUNCTION_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.functionName.value')
-    FUNCTION_SERVER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.functionServer.value')
-    # get ACR Name
-    ACR_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.acrName.value')
-    # get WebApp Tenant ID
-    WEB_APP_TENANT_ID=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppTenantId.value')
-    # get WebApp Object ID
-    WEB_APP_OBJECT_ID=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.webAppObjectId.value')
-    # get Storage Account
-    STORAGE_ACCOUNT_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountName.value')
-    STORAGE_ACCOUNT_TOKEN=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.storageAccountToken.value')
-    STORAGE_ACCOUNT_INPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.inputContainerName.value')
-    STORAGE_ACCOUNT_OUTPUT_CONTAINER=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputContainerName.value')
-    # get Cosmos DB Information
-    COSMOS_DB_SERVICE_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBServiceName.value')
-    COSMOS_DB_SERVICE_KEY=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBServiceKey.value')
-    COSMOS_DB_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.cosmosDBName.value')
-
-    APP_INSIGHTS_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsName.value')
-    APP_INSIGHTS_CONNECTION_STRING=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsConnectionString.value')    
-    APP_INSIGHTS_INSTRUMENTATION_KEY=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.outputAppInsightsInstrumentationKey.value')    
-
-
-    EVENTHUB_NAME_SPACE=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.namespaceName.value')
-    EVENTHUB_INPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1Name.value')
-    EVENTHUB_INPUT_2_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2Name.value')
-    EVENTHUB_OUTPUT_1_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1Name.value')
-    EVENTHUB_OUTPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubOutput1ConsumerGroup.value')
-    EVENTHUB_INPUT_1_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput1ConsumerGroup.value')
-    EVENTHUB_INPUT_2_CONSUMER_GROUP_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.eventHubInput2ConsumerGroup.value')
-
-    STREAM_ANALYTICS_JOB_NAME=$(az deployment group show --resource-group "$resourcegroup" -n "$datadep" | jq -r '.properties.outputs.asaJob.value')
-
-    RESOURCE_GROUP=$resourcegroup
 }
 
 
