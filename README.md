@@ -52,26 +52,26 @@ The content in this repository will cover the use cases:
 
 As described in the introduction, this repository contains all the resources to run load testing to select the most efficient Web App infrastructure based on the performance criteria you expect.
 
-A single pipeline or github action will deploy different infrastructures running a Web UI, a Web API and a database. Before running the pipeline, the user will select one of three infrastructures to test.
+A single pipeline or GitHub action will deploy different infrastructures running a Web UI, a Web API and a database. Before running the pipeline, the user will select one of three infrastructures to test.
 
 1. Web App Storage architecture:
-Web UI Single Page Web UI deployed on Azure Storage ($web container)
-Web API deployed in a container running on Azure Function and Azure App Service Plan 
-Database using the Azure Storage Table API
+Web UI Single Page Web UI deployed on Azure Storage ($web container),   
+Web API deployed in a container running on Azure Function,  
+Database hosted in Azure Storage Table  
 
-    ![Web App Architecture](./docs/img/web-storage-api-storage-architecture-800.png)
+  ![Web App Architecture](./docs/img/web-storage-api-storage-architecture-800.png)
 
 2. Web App Service architecture:
-Web UI Single Page Web UI deployed in a container running on Azure Function and Azure App Serivce Plan
-Web API deployed in a container running on Azure Function and Azure App Service Plan 
-Database using the Azure Storage Table API
+Web UI Single Page Web UI deployed in a container running on Azure App Service,  
+Web API deployed in a container running on Azure Function,  
+Database hosted in Azure Storage Table  
   
-    ![Web App Architecture](./docs/img/web-app-api-storage-architecture-800.png)
+  ![Web App Architecture](./docs/img/web-app-api-storage-architecture-800.png)
 
 3. Web App CosmosDB architecture:
-Web UI Single Page Web UI deployed in a container running on Azure Function and Azure App Serivce Plan
-Web API deployed in a container running on Azure Function and Azure App Service Plan 
-Database Azure CosmosDB
+Web UI Single Page Web UI deployed in a container running on Azure App Service,  
+Web API deployed in a container running on Azure Function,  
+Database hosted in Azure Cosmos DB  
 
     ![Web App Architecture](./docs/img/web-app-api-cosmosdb-architecture-800.png)
 
@@ -83,7 +83,7 @@ The latency is the time difference between the time an "output" event is raised 
 
   ![latency-500](./docs/img/latency-500.png)
 
-For these scenarios, three different infrastructures will be deployed. Each infrastructure will be deployed with its own pipeline or github action.
+For these scenarios, three different infrastructures will be deployed. Each infrastructure will be deployed with its own pipeline or GitHub action.
 
 1. Event Hub architecture:
    This architecture is used to run Ingestion load testing against Azure Event Hubs
@@ -529,7 +529,7 @@ Once you are connected with Azure, you can run the following bash to create the 
 ```
 
 where \<Azure-Subscription-Id\> is the subscriptionId of your Azure Account and \<Service-Principal-Name\> the name of the service principal which will be created. 
-This bash file will display all the information required for the Azure authentication with github Action pipeline and Azure DevOps pipeline.
+This bash file will display all the information required for the Azure authentication with GitHub Action pipeline and Azure DevOps pipeline.
 
 For instance:
 
@@ -652,7 +652,7 @@ Once the service principal is created, you can now create the Azure DevOps pipel
 
 You can use Azure DevOps to create load testing pipelines.
 
-#### Link your Azure DevOps project with the github repository
+#### Link your Azure DevOps project with the GitHub repository
 
 1. Navigate on your Azure DevOps organization https://dev.azure.com/YOUR_ORG
 
@@ -1046,7 +1046,7 @@ First, you need to create the Github Action Secret AZURE_CREDENTIALS for the aut
 
 #### Create Github Action Secret AZURE_CREDENTIALS
 
-1. On the github portal where you store your project, navigate on the the page 'Settings' and select the options 'Secrets'.
+1. On the GitHub portal where you store your project, navigate on the the page 'Settings' and select the options 'Secrets'.
 
     ![github-action-secrets](./docs/img/github-action-secrets.png)
 
@@ -1075,7 +1075,7 @@ In order to activate this pipeline, follow the steps below:
       git push
     ```
 
-4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the github portal, on the 'Action' page, select the workflow 'LoadTestingWebApp' and click on the button 'Run workflow'. If required you can change the following input parameters:
+4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'LoadTestingWebApp' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Azure AD Authentication disabled : False by default
    - Deployment Type: web-storage-api-storage by default
@@ -1113,7 +1113,7 @@ In order to activate this pipeline, follow the steps below:
       git push
     ```
 
-4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the github portal, on the 'Action' page, select the workflow 'LoadTestingEventhub' and click on the button 'Run workflow'. If required you can change the following input parameters:
+4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'LoadTestingEventhub' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Deployment Type: eventhub by default
    - Azure Eventhub Sku: Standard by default
@@ -1150,7 +1150,7 @@ In order to activate this pipeline, follow the steps below:
       git push
     ```
 
-4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the github portal, on the 'Action' page, select the workflow 'LoadTestingEventhubASA' and click on the button 'Run workflow'. If required you can change the following input parameters:
+4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'LoadTestingEventhubASA' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Deployment Type: eventhub-asa by default
    - Azure Eventhub Sku: Standard by default
@@ -1186,7 +1186,7 @@ In order to activate this pipeline, follow the steps below:
       git push
     ```
 
-4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the github portal, on the 'Action' page, select the workflow 'LoadTestingEventhub' and click on the button 'Run workflow'. If required you can change the following input parameters:
+4. Once the new pipeline is pushed into the main branch, you can launch manually the Github Action. On the GitHub portal, on the 'Action' page, select the workflow 'LoadTestingEventhub' and click on the button 'Run workflow'. If required you can change the following input parameters:
 
    - Deployment Type: eventhub by default
    - Azure Eventhub Sku: Standard by default
@@ -1291,12 +1291,12 @@ EventHubs with no public access Load Testing pipeline:[azure-pipelines-load-test
 
 You can create 4 Github Actions using the YAML files below:
 
-Web App Load Testing github action: [github-action-load-testing-web-app.yml](./devops-pipelines/github-action/github-action-load-testing-web-app.yml)
-EventHubs Load Testing github action:[github-action-load-testing-eventhub.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub.yml)
-EventHubs Stream Analytics Load Testing github action:[github-action-load-testing-eventhub-asa.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml)
-EventHubs with no public access Load Testing github action:[github-action-load-testing-eventhub-firewall.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml)
+Web App Load Testing GitHub action: [github-action-load-testing-web-app.yml](./devops-pipelines/github-action/github-action-load-testing-web-app.yml)
+EventHubs Load Testing GitHub action:[github-action-load-testing-eventhub.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub.yml)
+EventHubs Stream Analytics Load Testing GitHub action:[github-action-load-testing-eventhub-asa.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-asa.yml)
+EventHubs with no public access Load Testing GitHub action:[github-action-load-testing-eventhub-firewall.yml](./devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml)
 
-Associated with each pipeline or github action there are:
+Associated with each pipeline or GitHub action there are:
 
 - a YAML file which defines the Azure Load Testing configuration.
 - a JMX file which contains the JMeter project in XML format.
@@ -1336,7 +1336,7 @@ In the different Load Testing configuration files there are variables:
         - percentage(error) > {errorPercentage}
 ```
 
-The pipeline or the github action will automatically replace those variables with their respective pipeline or github action input variables.
+The pipeline or the GitHub action will automatically replace those variables with their respective pipeline or GitHub action input variables.
 For instance, below the Azure DevOps step which will update the Load Testing configuration file: 
 
 ```yml
@@ -1363,7 +1363,7 @@ For instance, below the Azure DevOps step which will update the Load Testing con
 ```
 
 
-For the EventHubs with no public access load testing, you need also to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The line below has been added into the EventHubs with no public access Load Testing configuration file. The pipeline or the github action will automatically replace {subnetId} with the value of the subnetId.
+For the EventHubs with no public access load testing, you need also to define in the Load Testing Configuration file the subnetId of subnet the Load Testing service will be connected to. The line below has been added into the EventHubs with no public access Load Testing configuration file. The pipeline or the GitHub action will automatically replace {subnetId} with the value of the subnetId.
 
 ```yml
         subnetId:  {subnetId}
