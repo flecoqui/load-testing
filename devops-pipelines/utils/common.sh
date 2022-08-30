@@ -227,7 +227,6 @@ function deployAzureInfrastructure(){
             --resource-group $resourcegroup \
             --subscription $subscription \
             --template-file $template \
-            --output none \
             --parameters \
             name=$prefix sku=$sku"
     else
@@ -236,7 +235,6 @@ function deployAzureInfrastructure(){
             --resource-group $resourcegroup \
             --subscription $subscription \
             --template-file $template \
-            --output none \
             --parameters \
             name=$prefix sku=$sku ipAddress=\"$ip\""
     fi
