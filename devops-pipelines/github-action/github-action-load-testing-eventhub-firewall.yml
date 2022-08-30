@@ -2,19 +2,19 @@ name: LoadTestingEventhubFirewall
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
-  push:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
-      - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
-      - devops-pipelines/load-testing/load-testing-eventhub.jmx   
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
+  #     - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
+  #     - devops-pipelines/load-testing/load-testing-eventhub.jmx   
    
-  pull_request:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
-      - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
-      - devops-pipelines/load-testing/load-testing-eventhub.jmx
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - devops-pipelines/github-action/github-action-load-testing-eventhub-firewall.yml
+  #     - devops-pipelines/load-testing/load-testing-eventhub-firewall.yaml
+  #     - devops-pipelines/load-testing/load-testing-eventhub.jmx
 
   workflow_dispatch:
     inputs:
