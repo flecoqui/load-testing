@@ -2,23 +2,23 @@ name: LoadTestingWebApp
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
-  push:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-web-app.yml
-      - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
-      - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
-      - devops-pipelines/load-testing/load-testing-web-app.yaml
-      - devops-pipelines/load-testing/load-testing-web-app.jmx   
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - devops-pipelines/github-action/github-action-load-testing-web-app.yml
+  #     - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
+  #     - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
+  #     - devops-pipelines/load-testing/load-testing-web-app.yaml
+  #     - devops-pipelines/load-testing/load-testing-web-app.jmx   
    
-  pull_request:
-    branches: [ main ]
-    paths:
-      - devops-pipelines/github-action/github-action-load-testing-web-app.yml
-      - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
-      - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
-      - devops-pipelines/load-testing/load-testing-web-app.yaml
-      - devops-pipelines/load-testing/load-testing-web-app.jmx
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - devops-pipelines/github-action/github-action-load-testing-web-app.yml
+  #     - devops-pipelines/load-testing/load-testing-web-app-auth.yaml
+  #     - devops-pipelines/load-testing/load-testing-web-app-auth.jmx
+  #     - devops-pipelines/load-testing/load-testing-web-app.yaml
+  #     - devops-pipelines/load-testing/load-testing-web-app.jmx
 
   workflow_dispatch:
     inputs:
@@ -84,7 +84,7 @@ on:
       AZURE_APP_PREFIX:
         description: 'Application prefix used for naming'
         required: true
-        default: "visit1212"
+        default: "visit0000"
  # Limit the number of inputs to 10 to run the github action
  #     AZURE_APP_ID:
  #       description: 'Application Id of the application created outside of the pipeline'
