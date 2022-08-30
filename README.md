@@ -1245,7 +1245,7 @@ A possible turn around consists in creating manually the Application from the De
 
     This command will create the Application and display the appId of the new application:
 
-    ![Troubleshooting-4](./docs/img/troubleshooting-web-app-04.png)µ
+    ![Troubleshooting-4](./docs/img/troubleshooting-web-app-04.png)
 
     **Note**:
     The creation of the Application in Azure Active Directory requires a redirect uri which is known once the infrastructure is deployed. This redirect Uri is a uri to an Azure Storage or an Azure App Service hosting the Web application. The creation of the Application in Azure Active Directory must be launched once the infrastructure is deployed. If you launch the creation of the Application in Azure Active Directory before deploying the infrastructure it will fail.
