@@ -211,7 +211,8 @@ if [[ "${action}" == "deploy" ]] ; then
         printMessage "       Frontend: 'Azure App Service', Backend: 'Azure Function', Database: 'Table Storage'"
         deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_APP_PREFIX" "$servicePlanSku" "$SCRIPTS_DIRECTORY/../../infra/web-app-api-storage/arm/global.json"
         printMessage "Clear Azure Storage table: visittable"
-        cmd="az storage table delete --name 'visittable' --account-name \"${STORAGE_ACCOUNT_NAME}\" --sas-token \"${STORAGE_ACCOUNT_TOKEN}\" --only-show-errors"
+	  key=$(az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value')
+        cmd="az storage table delete --name 'visittable' --account-name \"${STORAGE_ACCOUNT_NAME}\" --account-key \"${key}\" --only-show-errors"
         printProgress "$cmd"
         eval "$cmd"
     elif [ "$deploymentType" == 'web-storage-api-storage' ] ; then
@@ -219,7 +220,8 @@ if [[ "${action}" == "deploy" ]] ; then
         printMessage "       Frontend: 'Azure Storage', Backend: 'Azure Function', Database: 'Table Storage'"
         deployAzureInfrastructure "$AZURE_SUBSCRIPTION_ID" "$AZURE_REGION" "$AZURE_APP_PREFIX" "$servicePlanSku" "$SCRIPTS_DIRECTORY/../../infra/web-storage-api-storage/arm/global.json"
         printMessage "Clear Azure Storage table: visittable"
-        cmd="az storage table delete --name 'visittable' --account-name \"${STORAGE_ACCOUNT_NAME}\" --sas-token \"${STORAGE_ACCOUNT_TOKEN}\" --only-show-errors"
+	  key=$(az storage account keys list --account-name ${STORAGE_ACCOUNT_NAME} | jq -r '.[0].value')
+        cmd="az storage table delete --name 'visittable' --account-name \"${STORAGE_ACCOUNT_NAME}\" --account-key \"${key}\" --only-show-errors"
         printProgress "$cmd"
         eval "$cmd"
     elif [ "$deploymentType" == 'eventhub' ] ; then
