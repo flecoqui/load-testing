@@ -531,12 +531,14 @@ function updateConfigurationFile(){
     variable="$2"
     value="$3"
 
+    ESCAPED_REPLACE=$(printf '%s\n' "$value" | sed -e 's/[\/&]/\\&/g')
+
     count=$(grep "${variable}=.*" -c < "$configFile") || true
     if [ "${count}" == 1 ]; then
-        sed -i "s/${variable}=.*/${variable}=${value}/g" "${configFile}" 
+        sed -i "s/${variable}=.*/${variable}=${ESCAPED_REPLACE}/g" "${configFile}" 
     elif [ "${count}" == 0 ]; then
         echo "${variable}=${value}" >> "${configFile}"
-    fi
+    fi    
 }
 ##############################################################################
 #- readConfigurationFile: Update configuration file
